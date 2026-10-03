@@ -1,4 +1,17 @@
 {
+  "auth": {
+  "showPassword": "Afficher le mot de passe",
+  "hidePassword": "Masquer le mot de passe",
+  "loginSuccess": "Connexion réussie ! Redirection...",
+  "registerSuccess": "Compte créé ! Redirection...",
+  "invalidCredentials": "E-mail ou mot de passe incorrect.",
+  "emailInUse": "Cet e-mail est déjà enregistré.",
+  "genericError": "Une erreur s'est produite. Veuillez réessayer.",
+  "backHome": "Retour à l'accueil",
+  "orContinueWith": "ou continuer avec",
+  "termsNote": "En vous inscrivant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité.",
+  "alreadyLoggedIn": "Vous êtes déjà connecté."
+}
   "common": {
     "login": "Se connecter",
     "register": "S'inscrire",
