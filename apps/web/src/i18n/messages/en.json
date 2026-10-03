@@ -1,4 +1,17 @@
 {
+  "auth": {
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "loginSuccess": "Login successful! Redirecting...",
+  "registerSuccess": "Account created! Redirecting...",
+  "invalidCredentials": "Email or password is incorrect.",
+  "emailInUse": "This email is already registered.",
+  "genericError": "Something went wrong. Please try again.",
+  "backHome": "Back to home",
+  "orContinueWith": "or continue with",
+  "termsNote": "By registering, you agree to our Terms of Service and Privacy Policy.",
+  "alreadyLoggedIn": "You are already logged in."
+        }
   "common": {
     "login": "Sign in",
     "register": "Sign up",
