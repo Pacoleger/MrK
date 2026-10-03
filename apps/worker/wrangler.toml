@@ -15,7 +15,7 @@ ENVIRONMENT = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "mrk-db"
-database_id = "HIER-DEINE-ECHTE-DATENBANK-ID-EINSETZEN"
+database_id = "9c7f49c9-4096-4845-a2ad-2e678ecbaf0b"
 
 # ============================================================
 # R2 Storage (in Welle 4b optional, in 4c aktiv)
