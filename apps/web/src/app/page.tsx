@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { Atom, FlaskConical, Leaf, Sigma } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const subjects = [
-  { name: "Mathematik", icon: Sigma,       color: "from-brand-500 to-brand-700" },
-  { name: "Physik",     icon: Atom,        color: "from-accent-500 to-accent-700" },
-  { name: "Chemie",     icon: FlaskConical,color: "from-brand-600 to-accent-600" },
-  { name: "Biologie",   icon: Leaf,        color: "from-accent-400 to-brand-500" },
+  { name: "Mathematik", icon: Sigma,        color: "from-brand-500 to-brand-700" },
+  { name: "Physik",     icon: Atom,         color: "from-accent-500 to-accent-700" },
+  { name: "Chemie",     icon: FlaskConical, color: "from-brand-600 to-accent-600" },
+  { name: "Biologie",   icon: Leaf,         color: "from-accent-400 to-brand-500" },
 ];
 
 export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="border-b border-border/60 backdrop-blur sticky top-0 z-40 bg-background/70">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
@@ -20,7 +20,8 @@ export default function HomePage() {
             </span>
             <span>Lernplattform</span>
           </Link>
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-2">
+            <ThemeToggle />
             <Link
               href="/login"
               className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition"
@@ -37,7 +38,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="flex-1 grid place-items-center px-6 py-20">
         <div className="max-w-3xl text-center space-y-6">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-accent-100 text-accent-800 dark:bg-accent-900/40 dark:text-accent-200">
@@ -71,7 +71,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Fächer */}
       <section className="max-w-6xl mx-auto w-full px-6 pb-20 grid grid-cols-2 md:grid-cols-4 gap-4">
         {subjects.map(({ name, icon: Icon, color }) => (
           <div
@@ -92,7 +91,7 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-border/60 py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} MrK · DSGVO-konform · Made with ❤️ für den Unterricht
+        © {new Date().getFullYear()} MrK · DSGVO-konform
       </footer>
     </main>
   );
