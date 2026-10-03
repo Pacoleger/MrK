@@ -1,15 +1,20 @@
 name = "mrk-api"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[vars]
+ENVIRONMENT = "production"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "mrk-db"
-database_id = "PLACEHOLDER_ID"
+database_id = "9c7f49c9-4096-4845-a2ad-2e678ecbaf0b"
 
-[[r2_buckets]]
-binding = "STORAGE"
-bucket_name = "mrk-uploads"
-
-[vars]
-ENVIRONMENT = "development"
+# R2 Bucket wird in Welle 4b aktiviert
+# [[r2_buckets]]
+# binding = "STORAGE"
+# bucket_name = "mrk-uploads"
