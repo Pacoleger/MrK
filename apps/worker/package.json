@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "db:migrate": "wrangler d1 execute mrk-db --remote --file=./schema.sql"
   },
   "devDependencies": {
-    "wrangler": "^3.60.0",
+    "@cloudflare/workers-types": "^4.20240620.0",
     "typescript": "^5.4.0",
-    "@cloudflare/workers-types": "^4.20240620.0"
+    "wrangler": "^3.60.0"
   }
 }
