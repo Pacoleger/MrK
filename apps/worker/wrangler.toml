@@ -3,18 +3,29 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
-[observability]
-enabled = true
-
+# ============================================================
+# Environment Variables
+# ============================================================
 [vars]
 ENVIRONMENT = "production"
 
+# ============================================================
+# D1 Database
+# ============================================================
 [[d1_databases]]
 binding = "DB"
 database_name = "mrk-db"
-database_id = "9c7f49c9-4096-4845-a2ad-2e678ecbaf0b"
+database_id = "HIER-DEINE-ECHTE-DATENBANK-ID-EINSETZEN"
 
-# R2 Bucket wird in Welle 4b aktiviert
+# ============================================================
+# R2 Storage (in Welle 4b optional, in 4c aktiv)
+# ============================================================
 # [[r2_buckets]]
 # binding = "STORAGE"
 # bucket_name = "mrk-uploads"
+
+# ============================================================
+# Observability
+# ============================================================
+[observability]
+enabled = true
