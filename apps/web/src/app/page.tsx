@@ -1,15 +1,21 @@
+"use client";
+
 import Link from "next/link";
 import { Atom, FlaskConical, Leaf, Sigma } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useT } from "@/i18n/use-translation";
 
 const subjects = [
-  { name: "Mathematik", icon: Sigma,        color: "from-brand-500 to-brand-700" },
-  { name: "Physik",     icon: Atom,         color: "from-accent-500 to-accent-700" },
-  { name: "Chemie",     icon: FlaskConical, color: "from-brand-600 to-accent-600" },
-  { name: "Biologie",   icon: Leaf,         color: "from-accent-400 to-brand-500" },
-];
+  { key: "math",      icon: Sigma,        color: "from-brand-500 to-brand-700" },
+  { key: "physics",   icon: Atom,         color: "from-accent-500 to-accent-700" },
+  { key: "chemistry", icon: FlaskConical, color: "from-brand-600 to-accent-600" },
+  { key: "biology",   icon: Leaf,         color: "from-accent-400 to-brand-500" },
+] as const;
 
 export default function HomePage() {
+  const t = useT();
+
   return (
     <main className="min-h-screen flex flex-col">
       <header className="border-b border-border/60 backdrop-blur sticky top-0 z-40 bg-background/70">
@@ -21,18 +27,19 @@ export default function HomePage() {
             <span>Lernplattform</span>
           </Link>
           <nav className="flex items-center gap-2">
+            <LanguageSwitcher />
             <ThemeToggle />
             <Link
               href="/login"
               className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition"
             >
-              Anmelden
+              {t.common.login}
             </Link>
             <Link
               href="/register"
               className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
             >
-              Registrieren
+              {t.common.register}
             </Link>
           </nav>
         </div>
@@ -41,40 +48,39 @@ export default function HomePage() {
       <section className="flex-1 grid place-items-center px-6 py-20">
         <div className="max-w-3xl text-center space-y-6">
           <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-accent-100 text-accent-800 dark:bg-accent-900/40 dark:text-accent-200">
-            Klassen 7 – 10 · Mathematik · Physik · Chemie · Biologie
+            {t.home.tagline}
           </span>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            Lernen, das{" "}
+            {t.home.heroTitleStart}{" "}
             <span className="bg-gradient-to-r from-brand-500 to-accent-500 bg-clip-text text-transparent">
-              belohnt
+              {t.home.heroTitleHighlight}
             </span>{" "}
-            wird.
+            {t.home.heroTitleEnd}
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Aufgaben digital abgeben, Fortschritt live verfolgen, Sterne und
-            Badges sammeln – für Schüler, Lehrkräfte und Administratoren.
+            {t.home.heroSubtitle}
           </p>
           <div className="flex flex-wrap gap-3 justify-center pt-4">
             <Link
               href="/login"
               className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
             >
-              Jetzt starten
+              {t.home.ctaStart}
             </Link>
             <Link
               href="/demo"
               className="px-6 py-3 rounded-xl font-medium border border-border hover:bg-muted transition"
             >
-              Demo ansehen
+              {t.home.ctaDemo}
             </Link>
           </div>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto w-full px-6 pb-20 grid grid-cols-2 md:grid-cols-4 gap-4">
-        {subjects.map(({ name, icon: Icon, color }) => (
+        {subjects.map(({ key, icon: Icon, color }) => (
           <div
-            key={name}
+            key={key}
             className="rounded-2xl border border-border bg-card p-6 hover:shadow-lg hover:-translate-y-0.5 transition"
           >
             <div
@@ -82,16 +88,16 @@ export default function HomePage() {
             >
               <Icon size={22} />
             </div>
-            <h3 className="font-semibold">{name}</h3>
+            <h3 className="font-semibold">{t.home.subjects[key]}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Materialien, Aufgaben & Quizze
+              {t.home.subjectDescription}
             </p>
           </div>
         ))}
       </section>
 
       <footer className="border-t border-border/60 py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} MrK · DSGVO-konform
+        © {new Date().getFullYear()} MrK · {t.home.footer}
       </footer>
     </main>
   );
