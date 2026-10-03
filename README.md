@@ -7,5 +7,4 @@ Moderne Lernplattform für Mathematik, Physik, Chemie und Biologie (Klassen 7–
 - **Backend:** Cloudflare Workers, D1, R2
 - **Deploy:** GitHub → Cloudflare Pages / Workers
 
-
 ## Struktur
