@@ -1,17 +1,4 @@
 {
-  "auth": {
-  "showPassword": "Passwort anzeigen",
-  "hidePassword": "Passwort verbergen",
-  "loginSuccess": "Anmeldung erfolgreich! Weiterleitung...",
-  "registerSuccess": "Konto erstellt! Weiterleitung...",
-  "invalidCredentials": "E-Mail oder Passwort ist falsch.",
-  "emailInUse": "Diese E-Mail ist bereits registriert.",
-  "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-  "backHome": "Zurück zur Startseite",
-  "orContinueWith": "oder weiter mit",
-  "termsNote": "Mit der Registrierung stimmst du unseren Nutzungsbedingungen und der Datenschutzerklärung zu.",
-  "alreadyLoggedIn": "Du bist bereits angemeldet."
-          }
   "common": {
     "login": "Anmelden",
     "register": "Registrieren",
@@ -79,5 +66,18 @@
   "language": {
     "label": "Sprache",
     "change": "Sprache wechseln"
+  },
+  "auth": {
+    "showPassword": "Passwort anzeigen",
+    "hidePassword": "Passwort verbergen",
+    "loginSuccess": "Anmeldung erfolgreich! Weiterleitung...",
+    "registerSuccess": "Konto erstellt! Weiterleitung...",
+    "invalidCredentials": "E-Mail oder Passwort ist falsch.",
+    "emailInUse": "Diese E-Mail ist bereits registriert.",
+    "genericError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "backHome": "Zurück zur Startseite",
+    "orContinueWith": "oder weiter mit",
+    "termsNote": "Mit der Registrierung stimmst du unseren Nutzungsbedingungen und der Datenschutzerklärung zu.",
+    "alreadyLoggedIn": "Du bist bereits angemeldet."
   }
 }
