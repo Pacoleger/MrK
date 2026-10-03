@@ -1,0 +1,70 @@
+{
+  "common": {
+    "login": "Sign in",
+    "register": "Sign up",
+    "logout": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "role": "Role",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "roles": {
+    "student": "Student",
+    "teacher": "Teacher",
+    "admin": "Administrator"
+  },
+  "home": {
+    "tagline": "Grades 7 – 10 · Math · Physics · Chemistry · Biology",
+    "heroTitleStart": "Learning that",
+    "heroTitleHighlight": "rewards",
+    "heroTitleEnd": "you.",
+    "heroSubtitle": "Submit assignments digitally, track progress live, collect stars and badges – for students, teachers and administrators.",
+    "ctaStart": "Get started",
+    "ctaDemo": "View demo",
+    "subjects": {
+      "math": "Mathematics",
+      "physics": "Physics",
+      "chemistry": "Chemistry",
+      "biology": "Biology"
+    },
+    "subjectDescription": "Materials, assignments & quizzes",
+    "footer": "GDPR compliant · Made with ❤️ for education"
+  },
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to continue learning.",
+    "submit": "Sign in",
+    "noAccount": "Don't have an account?",
+    "registerLink": "Register now",
+    "forgotPassword": "Forgot password?"
+  },
+  "register": {
+    "title": "Create account",
+    "subtitle": "Start your learning journey in seconds.",
+    "submit": "Sign up",
+    "hasAccount": "Already have an account?",
+    "loginLink": "Sign in now",
+    "roleHint": "Choose your role",
+    "passwordHint": "At least 8 characters"
+  },
+  "validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email address",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordMismatch": "Passwords do not match",
+    "firstNameRequired": "First name is required",
+    "lastNameRequired": "Last name is required"
+  },
+  "language": {
+    "label": "Language",
+    "change": "Change language"
+  }
+}
