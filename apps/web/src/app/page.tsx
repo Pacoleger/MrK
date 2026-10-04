@@ -4,7 +4,9 @@ import Link from "next/link";
 import { Atom, FlaskConical, Leaf, Sigma } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { UserMenu } from "@/components/user-menu";
 import { useT } from "@/i18n/use-translation";
+import { useAuth } from "@/hooks/use-auth";
 
 const subjects = [
   { key: "math",      icon: Sigma,        color: "from-brand-500 to-brand-700" },
@@ -15,6 +17,7 @@ const subjects = [
 
 export default function HomePage() {
   const t = useT();
+  const { isAuthenticated } = useAuth();
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -29,18 +32,24 @@ export default function HomePage() {
           <nav className="flex items-center gap-2">
             <LanguageSwitcher />
             <ThemeToggle />
-            <Link
-              href="/login"
-              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition"
-            >
-              {t.common.login}
-            </Link>
-            <Link
-              href="/register"
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
-            >
-              {t.common.register}
-            </Link>
+            {isAuthenticated ? (
+              <UserMenu />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-muted transition"
+                >
+                  {t.common.login}
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
+                >
+                  {t.common.register}
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -61,18 +70,29 @@ export default function HomePage() {
             {t.home.heroSubtitle}
           </p>
           <div className="flex flex-wrap gap-3 justify-center pt-4">
-            <Link
-              href="/login"
-              className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
-            >
-              {t.home.ctaStart}
-            </Link>
-            <Link
-              href="/demo"
-              className="px-6 py-3 rounded-xl font-medium border border-border hover:bg-muted transition"
-            >
-              {t.home.ctaDemo}
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href="/dashboard"
+                className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
+              >
+                Zum Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-brand-500 to-accent-500 text-white hover:opacity-90 transition"
+                >
+                  {t.home.ctaStart}
+                </Link>
+                <Link
+                  href="/demo"
+                  className="px-6 py-3 rounded-xl font-medium border border-border hover:bg-muted transition"
+                >
+                  {t.home.ctaDemo}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
