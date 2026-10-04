@@ -14,9 +14,6 @@ import {
   Play,
 } from "lucide-react";
 
-export function generateStaticParams() {
-  return [];
-}
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +26,9 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
 
+export function generateStaticParams() {
+  return [];
+}
 export default function AssignmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
