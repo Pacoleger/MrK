@@ -15,7 +15,7 @@ ENVIRONMENT = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "mrk-db"
-database_id = "DEINE-D1-ID-HIER-EINSETZEN"
+database_id = "ee6e4935fcc47bab821ba41361d6a1e0"
 
 # ============================================================
 # R2 Storage
