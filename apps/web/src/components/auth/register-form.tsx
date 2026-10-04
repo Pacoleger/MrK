@@ -2,26 +2,30 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, UserPlus, GraduationCap, BookOpen } from "lucide-react";
 import { useT } from "@/i18n/use-translation";
+import { useAuth } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import type { Role } from "@mrk/shared";
+import type { Role } from "@/lib/types";
 
-type Status = "idle" | "submitting" | "success" | "error";
-
-const roleOptions: { value: Role; icon: typeof GraduationCap }[] = [
+const roleOptions: { value: "student" | "teacher"; icon: typeof GraduationCap }[] = [
   { value: "student", icon: GraduationCap },
   { value: "teacher", icon: BookOpen },
 ];
 
 export function RegisterForm() {
   const t = useT();
+  const router = useRouter();
+  const { register } = useAuth();
+
   const [showPassword, setShowPassword] = React.useState(false);
-  const [status, setStatus] = React.useState<Status>("idle");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const [firstName, setFirstName] = React.useState("");
@@ -29,7 +33,7 @@ export function RegisterForm() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
-  const [role, setRole] = React.useState<Role>("student");
+  const [role, setRole] = React.useState<"student" | "teacher">("student");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,13 +47,32 @@ export function RegisterForm() {
     if (password.length < 8) return setError(t.validation.passwordTooShort);
     if (password !== confirmPassword) return setError(t.validation.passwordMismatch);
 
-    setStatus("submitting");
+    setIsSubmitting(true);
 
-    // TODO (Step 4): POST /api/auth/register
-    await new Promise((r) => setTimeout(r, 900));
-
-    setStatus("success");
-    // TODO (Step 4): Redirect zum Dashboard + JWT speichern
+    try {
+      await register({ email, password, firstName, lastName, role });
+      router.push("/dashboard");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        switch (err.code) {
+          case "EMAIL_IN_USE":
+            setError(t.auth.emailInUse);
+            break;
+          case "EMAIL_INVALID":
+            setError(t.validation.emailInvalid);
+            break;
+          case "PASSWORD_TOO_SHORT":
+            setError(t.validation.passwordTooShort);
+            break;
+          default:
+            setError(err.message || t.auth.genericError);
+        }
+      } else {
+        setError(t.auth.genericError);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -60,13 +83,6 @@ export function RegisterForm() {
         </Alert>
       )}
 
-      {status === "success" && (
-        <Alert variant="success">
-          <AlertDescription>{t.auth.registerSuccess}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* Name row */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <Label htmlFor="firstName">{t.common.firstName}</Label>
@@ -75,7 +91,7 @@ export function RegisterForm() {
             autoComplete="given-name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            disabled={status === "submitting"}
+            disabled={isSubmitting}
             required
           />
         </div>
@@ -86,13 +102,12 @@ export function RegisterForm() {
             autoComplete="family-name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            disabled={status === "submitting"}
+            disabled={isSubmitting}
             required
           />
         </div>
       </div>
 
-      {/* Email */}
       <div className="space-y-2">
         <Label htmlFor="email">{t.common.email}</Label>
         <Input
@@ -102,12 +117,11 @@ export function RegisterForm() {
           placeholder="name@schule.de"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={status === "submitting"}
+          disabled={isSubmitting}
           required
         />
       </div>
 
-      {/* Role */}
       <div className="space-y-2">
         <Label>{t.register.roleHint}</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -118,13 +132,13 @@ export function RegisterForm() {
                 key={value}
                 type="button"
                 onClick={() => setRole(value)}
+                disabled={isSubmitting}
                 className={cn(
                   "flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition",
                   active
                     ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
                     : "border-border hover:bg-muted"
                 )}
-                disabled={status === "submitting"}
               >
                 <Icon className="h-4 w-4" />
                 {t.roles[value]}
@@ -134,7 +148,6 @@ export function RegisterForm() {
         </div>
       </div>
 
-      {/* Password */}
       <div className="space-y-2">
         <Label htmlFor="password">{t.common.password}</Label>
         <div className="relative">
@@ -144,7 +157,7 @@ export function RegisterForm() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={status === "submitting"}
+            disabled={isSubmitting}
             required
             className="pr-10"
           />
@@ -155,19 +168,12 @@ export function RegisterForm() {
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
             tabIndex={-1}
           >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          {t.register.passwordHint}
-        </p>
+        <p className="text-xs text-muted-foreground">{t.register.passwordHint}</p>
       </div>
 
-      {/* Confirm password */}
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">{t.common.confirmPassword}</Label>
         <Input
@@ -176,18 +182,13 @@ export function RegisterForm() {
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          disabled={status === "submitting"}
+          disabled={isSubmitting}
           required
         />
       </div>
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={status === "submitting" || status === "success"}
-        className="w-full"
-      >
-        {status === "submitting" ? (
+      <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             {t.common.loading}
@@ -206,10 +207,7 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         {t.register.hasAccount}{" "}
-        <Link
-          href="/login"
-          className="font-medium text-brand-600 hover:underline"
-        >
+        <Link href="/login" className="font-medium text-brand-600 hover:underline">
           {t.register.loginLink}
         </Link>
       </p>
