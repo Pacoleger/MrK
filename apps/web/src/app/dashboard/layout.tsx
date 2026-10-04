@@ -12,22 +12,21 @@ import {
   FlaskConical,
   Leaf,
   Sigma,
-  Bell,
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { useAuth } from "@/hooks/use-auth";
+import { NotificationBell } from "@/components/notification-bell";
 import { useT } from "@/i18n/use-translation";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard",           label: "Übersicht",   icon: LayoutDashboard },
-  { href: "/dashboard/aufgaben",  label: "Aufgaben",    icon: BookOpen },
-  { href: "/dashboard/klassen",   label: "Klassen",     icon: GraduationCap },
-  { href: "/dashboard/erfolge",   label: "Erfolge",     icon: Trophy },
-  { href: "/dashboard/einstellungen", label: "Einstellungen", icon: Settings },
+  { href: "/dashboard",                 label: "Übersicht",     icon: LayoutDashboard },
+  { href: "/dashboard/aufgaben",        label: "Aufgaben",      icon: BookOpen },
+  { href: "/dashboard/klassen",         label: "Klassen",       icon: GraduationCap },
+  { href: "/dashboard/erfolge",         label: "Erfolge",       icon: Trophy },
+  { href: "/dashboard/einstellungen",   label: "Einstellungen", icon: Settings },
 ];
 
 const subjects = [
@@ -43,7 +42,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user } = useAuth();
   const t = useT();
 
   return (
@@ -51,7 +49,6 @@ export default function DashboardLayout({
       <div className="min-h-screen flex bg-background">
         {/* Sidebar */}
         <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card">
-          {/* Logo */}
           <div className="p-4 border-b border-border">
             <Link href="/" className="flex items-center gap-2 font-bold">
               <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white">
@@ -61,7 +58,6 @@ export default function DashboardLayout({
             </Link>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 p-3 space-y-1">
             {navItems.map((item) => {
               const active = pathname === item.href;
@@ -84,7 +80,6 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          {/* Fächer */}
           <div className="p-3 border-t border-border">
             <p className="text-xs font-semibold text-muted-foreground mb-2 px-2">
               FÄCHER
@@ -103,9 +98,7 @@ export default function DashboardLayout({
           </div>
         </aside>
 
-        {/* Main */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Topbar */}
           <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-4 sm:px-6 gap-3">
             <div className="lg:hidden flex items-center gap-2 font-bold">
               <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-sm">
@@ -117,17 +110,10 @@ export default function DashboardLayout({
 
             <LanguageSwitcher />
             <ThemeToggle />
-            <button
-              className="relative p-2 rounded-lg hover:bg-muted transition"
-              aria-label="Benachrichtigungen"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
-            </button>
+            <NotificationBell />
             <UserMenu />
           </header>
 
-          {/* Content */}
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
             {children}
           </main>
