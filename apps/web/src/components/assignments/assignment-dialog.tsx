@@ -142,4 +142,80 @@ export function AssignmentDialog({
               id="desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-             
+              disabled={isSubmitting}
+              placeholder="Aufgabenstellung, Hinweise..."
+              className="w-full min-h-[100px] rounded-lg border border-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 resize-y"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Typ</Label>
+            <div className="flex flex-wrap gap-2">
+              {types.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => setType(t.value)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg border text-sm transition",
+                    type === t.value
+                      ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300"
+                      : "border-border hover:bg-muted"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="points">Max. Punkte</Label>
+              <Input
+                id="points"
+                type="number"
+                min={1}
+                max={1000}
+                value={maxPoints}
+                onChange={(e) => setMaxPoints(Number(e.target.value))}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="due">Abgabefrist (optional)</Label>
+              <Input
+                id="due"
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
+          <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
+            Abbrechen
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Erstellen...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Aufgabe erstellen
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
