@@ -160,3 +160,15 @@ export const classesApi = {
     return apiGet<{ classes: ClassInfo[] }>("/api/classes");
   },
 };
+export interface ClassInfo {
+  id: string;
+  name: string;
+  grade_level: number;
+  school_year_name?: string;
+}
+
+export const classesApi = {
+  list() {
+    return apiGet<{ classes: ClassInfo[] }>("/api/classes");
+  },
+};
