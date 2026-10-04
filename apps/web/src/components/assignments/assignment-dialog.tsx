@@ -34,7 +34,10 @@ export function AssignmentDialog({
   onSuccess: () => void;
   availableClasses: Array<{ id: string; name: string }>;
 }) {
-  const [classId, setClassId] = React.useState(availableClasses[0]?.id ?? "");
+  // WICHTIG: initialer Wert auf die tatsächliche ID setzen
+  const [classId, setClassId] = React.useState<string>(
+    availableClasses[0]?.id ?? ""
+  );
   const [subjectId, setSubjectId] = React.useState("math");
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -44,10 +47,31 @@ export function AssignmentDialog({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // WICHTIG: Wenn availableClasses später geladen wird und classId noch leer ist → setzen
+  React.useEffect(() => {
+    if (!classId && availableClasses.length > 0) {
+      setClassId(availableClasses[0].id);
+    }
+  }, [availableClasses, classId]);
+
   const handleSubmit = async () => {
     setError(null);
-    if (!title.trim()) return setError("Titel ist erforderlich");
-    if (!classId) return setError("Klasse ist erforderlich");
+
+    if (!classId) {
+      return setError("Bitte wähle eine Klasse aus");
+    }
+    if (!title.trim()) {
+      return setError("Titel ist erforderlich");
+    }
+
+    // Debug
+    console.log("[AssignmentDialog] submit payload:", {
+      classId,
+      subjectId,
+      title,
+      type,
+      maxPoints,
+    });
 
     setIsSubmitting(true);
     try {
@@ -62,7 +86,9 @@ export function AssignmentDialog({
       });
       onSuccess();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Erstellen fehlgeschlagen");
+      setError(
+        err instanceof ApiError ? err.message : "Erstellen fehlgeschlagen"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -90,15 +116,16 @@ export function AssignmentDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Klasse</Label>
+              <Label htmlFor="classId">Klasse</Label>
               <select
+                id="classId"
                 value={classId}
                 onChange={(e) => setClassId(e.target.value)}
                 disabled={isSubmitting || availableClasses.length === 0}
                 className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
               >
                 {availableClasses.length === 0 && (
-                  <option value="">Keine Klasse zugewiesen</option>
+                  <option value="">Lade Klassen...</option>
                 )}
                 {availableClasses.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -106,11 +133,15 @@ export function AssignmentDialog({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                Debug: {classId || "(leer)"}
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Fach</Label>
+              <Label htmlFor="subjectId">Fach</Label>
               <select
+                id="subjectId"
                 value={subjectId}
                 onChange={(e) => setSubjectId(e.target.value)}
                 disabled={isSubmitting}
@@ -201,7 +232,10 @@ export function AssignmentDialog({
           <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !classId}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
