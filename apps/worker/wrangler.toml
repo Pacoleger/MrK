@@ -15,14 +15,14 @@ ENVIRONMENT = "production"
 [[d1_databases]]
 binding = "DB"
 database_name = "mrk-db"
-database_id = "9c7f49c9-4096-4845-a2ad-2e678ecbaf0b"
+database_id = "DEINE-D1-ID-HIER-EINSETZEN"
 
 # ============================================================
-# R2 Storage (in Welle 4b optional, in 4c aktiv)
+# R2 Storage
 # ============================================================
-# [[r2_buckets]]
-# binding = "STORAGE"
-# bucket_name = "mrk-uploads"
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "mrk-uploads"
 
 # ============================================================
 # Observability
