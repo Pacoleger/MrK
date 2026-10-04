@@ -212,3 +212,78 @@ async function createAssignment(
 
   return ok({ id, message: "Assignment created" });
 }
+// ============================================================
+// GET /api/assignments/:id — Detail
+// ============================================================
+
+export async function handleAssignmentDetail(
+  request: Request,
+  env: Env,
+  id: string
+): Promise<Response> {
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
+
+  if (request.method !== "GET") {
+    return methodNotAllowed(["GET"]);
+  }
+
+  const assignment = await env.DB.prepare(
+    `SELECT a.*, s.name_de AS subject_name, c.name AS class_name,
+            u.first_name AS teacher_first, u.last_name AS teacher_last
+     FROM assignments a
+     JOIN subjects s ON s.id = a.subject_id
+     JOIN classes c ON c.id = a.class_id
+     JOIN users u ON u.id = a.teacher_id
+     WHERE a.id = ?`
+  )
+    .bind(id)
+    .first<DbAssignment & {
+      subject_name: string;
+      class_name: string;
+      teacher_first: string;
+      teacher_last: string;
+    }>();
+
+  if (!assignment) return notFound("Assignment not found");
+
+  // Zugriff prüfen
+  if (ctx.user.role === "student") {
+    const enrolled = await env.DB.prepare(
+      "SELECT id FROM class_students WHERE class_id = ? AND student_id = ?"
+    )
+      .bind(assignment.class_id, ctx.user.id)
+      .first<{ id: string }>();
+
+    if (!enrolled) return fail("FORBIDDEN", "Not enrolled in this class", 403);
+
+    // Submission laden oder anlegen
+    let submission = await env.DB.prepare(
+      "SELECT * FROM submissions WHERE assignment_id = ? AND student_id = ?"
+    )
+      .bind(id, ctx.user.id)
+      .first();
+
+    if (!submission) {
+      const subId = uuid();
+      await env.DB.prepare(
+        `INSERT INTO submissions (id, assignment_id, student_id, status)
+         VALUES (?, ?, ?, 'not_started')`
+      )
+        .bind(subId, id, ctx.user.id)
+        .run();
+
+      submission = {
+        id: subId,
+        status: "not_started",
+        time_spent_sec: 0,
+        view_count: 0,
+      };
+    }
+
+    return ok({ assignment, submission });
+  }
+
+  // Lehrer / Admin
+  return ok({ assignment });
+}
