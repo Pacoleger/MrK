@@ -114,3 +114,64 @@ export function toPublicUser(u: DbUser): PublicUser {
     createdAt: u.created_at,
   };
 }
+// ============================================================
+// Assignment / Submission Types
+// ============================================================
+
+export interface DbAssignment {
+  id: string;
+  class_id: string;
+  subject_id: string;
+  teacher_id: string;
+  title: string;
+  description: string | null;
+  type: "homework" | "exercise" | "test" | "quiz" | "project";
+  max_points: number;
+  due_date: string | null;
+  is_published: number;
+  solution_file_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbSubmission {
+  id: string;
+  assignment_id: string;
+  student_id: string;
+  status: "not_started" | "in_progress" | "submitted" | "graded";
+  content: string | null;
+  started_at: string | null;
+  submitted_at: string | null;
+  time_spent_sec: number;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbUpload {
+  id: string;
+  submission_id: string | null;
+  assignment_id: string | null;
+  uploader_id: string;
+  file_name: string;
+  file_key: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
+}
+
+export interface DbClass {
+  id: string;
+  name: string;
+  grade_level: number;
+  school_year_id: string;
+  homeroom_teacher_id: string | null;
+  created_at: string;
+}
+
+export interface DbClassStudent {
+  id: string;
+  class_id: string;
+  student_id: string;
+  enrolled_at: string;
+}
