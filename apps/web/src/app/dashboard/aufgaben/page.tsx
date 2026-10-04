@@ -6,9 +6,16 @@ import { Button } from "@/components/ui/button";
 import { AssignmentCard } from "@/components/assignments/assignment-card";
 import { AssignmentDialog } from "@/components/assignments/assignment-dialog";
 import { assignmentsApi, type Assignment } from "@/lib/assignments-api";
+import { apiGet } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+interface ClassInfo {
+  id: string;
+  name: string;
+  grade_level: number;
+}
 
 const filters = [
   { value: "all", label: "Alle" },
@@ -20,6 +27,7 @@ const filters = [
 export default function AufgabenPage() {
   const { user } = useAuth();
   const [assignments, setAssignments] = React.useState<Assignment[]>([]);
+  const [availableClasses, setAvailableClasses] = React.useState<ClassInfo[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -40,6 +48,14 @@ export default function AufgabenPage() {
     }
   }, []);
 
+  // Klassen laden (nur für Lehrer)
+  React.useEffect(() => {
+    if (!isTeacher) return;
+    apiGet<{ classes: ClassInfo[] }>("/api/classes")
+      .then((data) => setAvailableClasses(data.classes))
+      .catch((err) => console.error("Klassen laden fehlgeschlagen:", err));
+  }, [isTeacher]);
+
   React.useEffect(() => {
     loadAssignments();
   }, [loadAssignments]);
@@ -48,7 +64,10 @@ export default function AufgabenPage() {
     if (activeFilter === "all") return assignments;
     if (activeFilter === "open") {
       return assignments.filter(
-        (a) => !a.submission_status || a.submission_status === "not_started" || a.submission_status === "in_progress"
+        (a) =>
+          !a.submission_status ||
+          a.submission_status === "not_started" ||
+          a.submission_status === "in_progress"
       );
     }
     if (activeFilter === "submitted") {
@@ -59,12 +78,6 @@ export default function AufgabenPage() {
     }
     return assignments;
   }, [assignments, activeFilter]);
-
-  // Mock-Klassen für den Dialog – in späterer Welle echte API
-  const availableClasses = [
-    { id: "7a", name: "7A" },
-    { id: "8a", name: "8A" },
-  ];
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -79,14 +92,23 @@ export default function AufgabenPage() {
         </div>
 
         {isTeacher && (
-          <Button onClick={() => setShowCreateDialog(true)}>
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            disabled={availableClasses.length === 0}
+          >
             <Plus className="h-4 w-4" />
             Neue Aufgabe
           </Button>
         )}
       </div>
 
-      {/* Filter */}
+      {isTeacher && availableClasses.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900 p-4 text-sm text-amber-900 dark:text-amber-200">
+          Du bist noch keiner Klasse als Lehrer zugewiesen. Bitte wende dich an
+          den Administrator.
+        </div>
+      )}
+
       <div className="flex items-center gap-2 flex-wrap">
         <Filter className="h-4 w-4 text-muted-foreground" />
         {filters.map((f) => (
@@ -105,7 +127,6 @@ export default function AufgabenPage() {
         ))}
       </div>
 
-      {/* Liste */}
       {isLoading ? (
         <div className="grid place-items-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
