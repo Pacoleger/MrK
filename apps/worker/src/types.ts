@@ -58,3 +58,59 @@ export interface DbRole {
   description: string | null;
   created_at: string;
 }
+// ============================================================
+// Auth Types
+// ============================================================
+
+export interface DbUser {
+  id: string;
+  email: string;
+  password_hash: string;
+  password_salt: string;
+  first_name: string;
+  last_name: string;
+  role: "admin" | "teacher" | "student";
+  avatar_url: string | null;
+  is_active: number;
+  locale: "de" | "en" | "fr";
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "admin" | "teacher" | "student";
+  avatarUrl: string | null;
+  locale: "de" | "en" | "fr";
+  createdAt: string;
+}
+
+export interface JwtPayload {
+  sub: string;        // user id
+  email: string;
+  role: string;
+  iat: number;
+  exp: number;
+}
+
+export interface AuthContext {
+  user: PublicUser;
+  payload: JwtPayload;
+}
+
+export function toPublicUser(u: DbUser): PublicUser {
+  return {
+    id: u.id,
+    email: u.email,
+    firstName: u.first_name,
+    lastName: u.last_name,
+    role: u.role,
+    avatarUrl: u.avatar_url,
+    locale: u.locale,
+    createdAt: u.created_at,
+  };
+}
