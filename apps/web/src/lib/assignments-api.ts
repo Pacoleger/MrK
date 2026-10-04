@@ -167,8 +167,3 @@ export interface ClassInfo {
   school_year_name?: string;
 }
 
-export const classesApi = {
-  list() {
-    return apiGet<{ classes: ClassInfo[] }>("/api/classes");
-  },
-};
