@@ -1,5 +1,11 @@
-import type { Env, DbAssignment, DbClassStudent } from "../types";
-import { ok, fail, methodNotAllowed, notFound, serverError } from "../lib/response";
+import type { Env, DbAssignment } from "../types";
+import {
+  ok,
+  fail,
+  methodNotAllowed,
+  notFound,
+  serverError,
+} from "../lib/response";
 import { uuid } from "../lib/crypto";
 import { requireAuth, isAuthError, requireRole } from "../middleware/auth";
 import { logActivity } from "../lib/logger";
@@ -90,9 +96,11 @@ async function createAssignment(
   env: Env,
   ctx: { user: { id: string; role: string } }
 ): Promise<Response> {
+  // 1. Nur Lehrer/Admin
   const roleError = requireRole(ctx as never, ["teacher", "admin"]);
   if (roleError) return roleError;
 
+  // 2. Body lesen
   let body: {
     classId?: string;
     subjectId?: string;
@@ -106,56 +114,132 @@ async function createAssignment(
   try {
     body = await request.json();
   } catch {
-    return fail("INVALID_JSON", "Invalid JSON", 400);
+    return fail("INVALID_JSON", "Ungültiger Request-Body", 400);
   }
 
-  console.log("[createAssignment] body:", JSON.stringify(body));
+  // 3. Debug: Was kommt an?
+  console.log("[createAssignment] ============================================");
+  console.log("[createAssignment] payload:", JSON.stringify(body, null, 2));
+  console.log("[createAssignment] teacherId:", ctx.user.id);
+  console.log("[createAssignment] ============================================");
 
-  if (!body.classId) return fail("CLASS_REQUIRED", "classId is required", 400);
-  if (!body.subjectId) return fail("SUBJECT_REQUIRED", "subjectId is required", 400);
+  // 4. Validierung
+  if (!body.classId || typeof body.classId !== "string" || !body.classId.trim()) {
+    return fail("CLASS_REQUIRED", "classId ist erforderlich", 400);
+  }
+  if (!body.subjectId || typeof body.subjectId !== "string" || !body.subjectId.trim()) {
+    return fail("SUBJECT_REQUIRED", "subjectId ist erforderlich", 400);
+  }
 
   const titleCheck = validateName(body.title, "title");
-  if (!titleCheck.valid) return fail(titleCheck.error!, "Title required", 400);
+  if (!titleCheck.valid) {
+    return fail(titleCheck.error!, "Titel ist erforderlich", 400);
+  }
 
   const type = body.type ?? "homework";
   const validTypes = ["homework", "exercise", "test", "quiz", "project"];
   if (!validTypes.includes(type)) {
-    return fail("INVALID_TYPE", `type must be one of: ${validTypes.join(", ")}`, 400);
+    return fail(
+      "INVALID_TYPE",
+      `type muss einer sein von: ${validTypes.join(", ")}`,
+      400
+    );
   }
 
-  const maxPoints = Math.min(Math.max(body.maxPoints ?? 100, 1), 1000);
+  const maxPoints = Math.min(Math.max(Number(body.maxPoints) || 100, 1), 1000);
 
-  // due_date robust normalisieren: leerer String → null
+  // 5. dueDate robust normalisieren
   let dueDate: string | null = null;
-  if (body.dueDate && typeof body.dueDate === "string" && body.dueDate.trim() !== "") {
+  if (
+    body.dueDate &&
+    typeof body.dueDate === "string" &&
+    body.dueDate.trim() !== ""
+  ) {
     try {
-      dueDate = new Date(body.dueDate).toISOString();
+      const parsed = new Date(body.dueDate);
+      if (!isNaN(parsed.getTime())) {
+        dueDate = parsed.toISOString();
+      }
     } catch {
       dueDate = null;
     }
   }
 
-  // Prüfen, ob Klasse existiert
-  const classExists = await env.DB.prepare(
-    "SELECT id FROM classes WHERE id = ?"
-  ).bind(body.classId).first<{ id: string }>();
+  console.log("[createAssignment] normalized values:", {
+    classId: body.classId,
+    subjectId: body.subjectId,
+    title: body.title!.trim(),
+    type,
+    maxPoints,
+    dueDate,
+  });
 
-  if (!classExists) {
-    return fail("CLASS_NOT_FOUND", `Klasse ${body.classId} nicht gefunden`, 400);
-  }
-
-  // Prüfen, ob Lehrer der Klasse zugewiesen ist
-  const teacherAssigned = await env.DB.prepare(
-    `SELECT id FROM class_subjects WHERE class_id = ? AND subject_id = ? AND teacher_id = ?`
-  ).bind(body.classId, body.subjectId, ctx.user.id).first<{ id: string }>();
-
-  // Nur warnen, wenn nicht zugewiesen – nicht blockieren
-  if (!teacherAssigned) {
-    console.warn(`[createAssignment] Teacher ${ctx.user.id} not assigned to class ${body.classId} / subject ${body.subjectId}`);
-  }
-
-  const id = uuid();
+  // 6. Klasse prüfen
   try {
+    const classExists = await env.DB.prepare(
+      "SELECT id, name FROM classes WHERE id = ?"
+    )
+      .bind(body.classId.trim())
+      .first<{ id: string; name: string }>();
+
+    if (!classExists) {
+      // Zeige alle existierenden Klassen im Log
+      const allClasses = await env.DB.prepare(
+        "SELECT id, name FROM classes"
+      ).all<{ id: string; name: string }>();
+
+      console.error(
+        "[createAssignment] Klasse nicht gefunden:",
+        body.classId,
+        "Verfügbare Klassen:",
+        JSON.stringify(allClasses.results)
+      );
+
+      return fail(
+        "CLASS_NOT_FOUND",
+        `Klasse "${body.classId}" existiert nicht. Verfügbare: ${
+          allClasses.results?.map((c) => c.id).join(", ") ?? "keine"
+        }`,
+        400
+      );
+    }
+  } catch (err) {
+    console.error("[createAssignment] DB class check failed:", err);
+    return serverError("Datenbankfehler bei der Klassenprüfung");
+  }
+
+  // 7. Fach prüfen
+  try {
+    const subjectExists = await env.DB.prepare(
+      "SELECT id FROM subjects WHERE id = ?"
+    )
+      .bind(body.subjectId.trim())
+      .first<{ id: string }>();
+
+    if (!subjectExists) {
+      return fail(
+        "SUBJECT_NOT_FOUND",
+        `Fach "${body.subjectId}" existiert nicht`,
+        400
+      );
+    }
+  } catch (err) {
+    console.error("[createAssignment] DB subject check failed:", err);
+    return serverError("Datenbankfehler bei der Fachprüfung");
+  }
+
+  // 8. INSERT
+  const id = uuid();
+
+  try {
+    console.log("[createAssignment] INSERT mit:", {
+      id,
+      classId: body.classId.trim(),
+      subjectId: body.subjectId.trim(),
+      teacherId: ctx.user.id,
+      title: body.title!.trim(),
+    });
+
     await env.DB.prepare(
       `INSERT INTO assignments
         (id, class_id, subject_id, teacher_id, title, description, type, max_points, due_date, is_published)
@@ -163,8 +247,8 @@ async function createAssignment(
     )
       .bind(
         id,
-        body.classId,
-        body.subjectId,
+        body.classId.trim(),
+        body.subjectId.trim(),
         ctx.user.id,
         body.title!.trim(),
         body.description?.trim() || null,
@@ -173,19 +257,21 @@ async function createAssignment(
         dueDate
       )
       .run();
+
+    console.log("[createAssignment] INSERT erfolgreich:", id);
   } catch (err) {
-    console.error("createAssignment INSERT error:", err);
+    console.error("[createAssignment] INSERT failed:", err);
     return serverError(
-      `Failed to create assignment: ${err instanceof Error ? err.message : "Unknown"}`
+      `DB Fehler: ${err instanceof Error ? err.message : "Unbekannt"}`
     );
   }
 
-  // Notifications an alle Schüler der Klasse
+  // 9. Notifications (best-effort, blockiert nicht)
   try {
     const students = await env.DB.prepare(
       "SELECT student_id FROM class_students WHERE class_id = ?"
     )
-      .bind(body.classId)
+      .bind(body.classId.trim())
       .all<{ student_id: string }>();
 
     for (const s of students.results ?? []) {
@@ -199,19 +285,27 @@ async function createAssignment(
       );
     }
   } catch (err) {
-    console.error("Notification error:", err);
+    console.error("[createAssignment] notification failed:", err);
+    // nicht fatal
   }
 
-  await logActivity(env, {
-    userId: ctx.user.id,
-    action: "create_assignment",
-    targetType: "assignment",
-    targetId: id,
-    request,
-  });
+  // 10. Activity Log (best-effort)
+  try {
+    await logActivity(env, {
+      userId: ctx.user.id,
+      action: "create_assignment",
+      targetType: "assignment",
+      targetId: id,
+      request,
+    });
+  } catch (err) {
+    console.error("[createAssignment] logActivity failed:", err);
+    // nicht fatal
+  }
 
-  return ok({ id, message: "Assignment created" });
+  return ok({ id, message: "Aufgabe erstellt" });
 }
+
 // ============================================================
 // GET /api/assignments/:id — Detail
 // ============================================================
@@ -238,14 +332,16 @@ export async function handleAssignmentDetail(
      WHERE a.id = ?`
   )
     .bind(id)
-    .first<DbAssignment & {
-      subject_name: string;
-      class_name: string;
-      teacher_first: string;
-      teacher_last: string;
-    }>();
+    .first<
+      DbAssignment & {
+        subject_name: string;
+        class_name: string;
+        teacher_first: string;
+        teacher_last: string;
+      }
+    >();
 
-  if (!assignment) return notFound("Assignment not found");
+  if (!assignment) return notFound("Aufgabe nicht gefunden");
 
   // Zugriff prüfen
   if (ctx.user.role === "student") {
@@ -255,7 +351,9 @@ export async function handleAssignmentDetail(
       .bind(assignment.class_id, ctx.user.id)
       .first<{ id: string }>();
 
-    if (!enrolled) return fail("FORBIDDEN", "Not enrolled in this class", 403);
+    if (!enrolled) {
+      return fail("FORBIDDEN", "Nicht in dieser Klasse eingeschrieben", 403);
+    }
 
     // Submission laden oder anlegen
     let submission = await env.DB.prepare(
