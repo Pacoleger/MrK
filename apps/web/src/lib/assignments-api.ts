@@ -62,8 +62,15 @@ export interface CreateAssignmentData {
   dueDate?: string;
 }
 
+export interface ClassInfo {
+  id: string;
+  name: string;
+  grade_level: number;
+  school_year_name?: string;
+}
+
 // ============================================================
-// API
+// Assignments API
 // ============================================================
 
 export const assignmentsApi = {
@@ -148,22 +155,13 @@ export const assignmentsApi = {
     );
   },
 };
-export interface ClassInfo {
-  id: string;
-  name: string;
-  grade_level: number;
-  school_year_name?: string;
-}
+
+// ============================================================
+// Classes API
+// ============================================================
 
 export const classesApi = {
   list() {
     return apiGet<{ classes: ClassInfo[] }>("/api/classes");
   },
 };
-export interface ClassInfo {
-  id: string;
-  name: string;
-  grade_level: number;
-  school_year_name?: string;
-}
-
