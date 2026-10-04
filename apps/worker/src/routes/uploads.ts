@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { ok, fail, methodNotAllowed, serverError } from "../lib/response";
+import { ok, fail, methodNotAllowed, notFound, serverError } from "../lib/response";
 import { uuid } from "../lib/crypto";
 import { requireAuth, isAuthError } from "../middleware/auth";
 import { logActivity } from "../lib/logger";
@@ -35,21 +35,17 @@ export async function handleUpload(
 
   if (!file) return fail("FILE_REQUIRED", "No file provided", 400);
 
-  // Validierung
   const check = validateFile(file);
   if (!check.valid) {
     return fail(check.error!, "File validation failed", 400);
   }
 
-  // In R2 speichern
   const key = makeFileKey("submissions", ctx.user.id, file.name);
   const arrayBuffer = await file.arrayBuffer();
 
   try {
     await env.STORAGE.put(key, arrayBuffer, {
-      httpMetadata: {
-        contentType: file.type,
-      },
+      httpMetadata: { contentType: file.type },
       customMetadata: {
         uploaderId: ctx.user.id,
         originalName: file.name,
@@ -60,7 +56,6 @@ export async function handleUpload(
     return serverError("Failed to store file");
   }
 
-  // In D1 tracken
   const uploadId = uuid();
   try {
     await env.DB.prepare(
@@ -80,7 +75,6 @@ export async function handleUpload(
       .run();
   } catch (err) {
     console.error("Upload DB insert error:", err);
-    // Nicht kritisch
   }
 
   await logActivity(env, {
@@ -126,10 +120,10 @@ export async function handleDownload(
       submission_id: string | null;
     }>();
 
-  if (!upload) return fail("NOT_FOUND", "Upload not found", 404);
+  if (!upload) return notFound("Upload not found");
 
   const object = await env.STORAGE.get(upload.file_key);
-  if (!object) return fail("NOT_FOUND", "File not found in storage", 404);
+  if (!object) return notFound("File not found in storage");
 
   const headers = new Headers();
   headers.set("Content-Type", upload.file_type);
@@ -162,3 +156,6 @@ export async function handleListUploads(
   )
     .bind(submissionId)
     .all();
+
+  return ok({ uploads: uploads.results ?? [] });
+}
