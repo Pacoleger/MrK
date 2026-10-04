@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, ChevronRight } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { StudentStats } from "@/lib/stats-api";
@@ -57,7 +57,6 @@ export function LevelProgress({ stats }: { stats: StudentStats }) {
           </div>
         </div>
 
-        {/* Progress Bar */}
         <div className="space-y-2">
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div
@@ -67,7 +66,9 @@ export function LevelProgress({ stats }: { stats: StudentStats }) {
           </div>
           {level.nextLevelStars ? (
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Noch {remaining} Sterne bis Level {level.level + 1}</span>
+              <span>
+                Noch {remaining} Sterne bis Level {level.level + 1}
+              </span>
               <span>
                 {stars} / {level.nextLevelStars}
               </span>
