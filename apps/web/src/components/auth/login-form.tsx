@@ -2,19 +2,23 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
 import { useT } from "@/i18n/use-translation";
+import { useAuth } from "@/hooks/use-auth";
+import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-type Status = "idle" | "submitting" | "success" | "error";
-
 export function LoginForm() {
   const t = useT();
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [showPassword, setShowPassword] = React.useState(false);
-  const [status, setStatus] = React.useState<Status>("idle");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const [email, setEmail] = React.useState("");
@@ -24,23 +28,29 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
 
-    if (!email) {
-      setError(t.validation.emailRequired);
-      return;
+    if (!email) return setError(t.validation.emailRequired);
+    if (!password) return setError(t.validation.passwordRequired);
+
+    setIsSubmitting(true);
+
+    try {
+      await login({ email, password });
+      router.push("/dashboard");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        switch (err.code) {
+          case "INVALID_CREDENTIALS":
+            setError(t.auth.invalidCredentials);
+            break;
+          default:
+            setError(err.message || t.auth.genericError);
+        }
+      } else {
+        setError(t.auth.genericError);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-    if (!password) {
-      setError(t.validation.passwordRequired);
-      return;
-    }
-
-    setStatus("submitting");
-
-    // TODO (Step 4): POST /api/auth/login
-    // Vorerst simulieren wir einen kurzen Delay
-    await new Promise((r) => setTimeout(r, 800));
-
-    setStatus("success");
-    // TODO (Step 4): Redirect zum Dashboard + JWT speichern
   };
 
   return (
@@ -48,12 +58,6 @@ export function LoginForm() {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {status === "success" && (
-        <Alert variant="success">
-          <AlertDescription>{t.auth.loginSuccess}</AlertDescription>
         </Alert>
       )}
 
@@ -66,7 +70,7 @@ export function LoginForm() {
           placeholder="name@schule.de"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={status === "submitting"}
+          disabled={isSubmitting}
           required
         />
       </div>
@@ -89,7 +93,7 @@ export function LoginForm() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={status === "submitting"}
+            disabled={isSubmitting}
             required
             className="pr-10"
           />
@@ -109,13 +113,8 @@ export function LoginForm() {
         </div>
       </div>
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={status === "submitting" || status === "success"}
-        className="w-full"
-      >
-        {status === "submitting" ? (
+      <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             {t.common.loading}
@@ -130,10 +129,7 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         {t.login.noAccount}{" "}
-        <Link
-          href="/register"
-          className="font-medium text-brand-600 hover:underline"
-        >
+        <Link href="/register" className="font-medium text-brand-600 hover:underline">
           {t.login.registerLink}
         </Link>
       </p>
