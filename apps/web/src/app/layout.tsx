@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -10,7 +11,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "MrK – Lernplattform",
   description:
-    "Moderne Lernplattform für Mathematik, Physik, Chemie und Biologie (Klassen 7–10)",
+    "Moderne Lernplattform für Mathematik, Physik, Chemie und Biologie (Klassen 7–13)",
 };
 
 export default function RootLayout({
@@ -28,7 +29,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <I18nProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </AuthProvider>
           </I18nProvider>
         </ThemeProvider>
       </body>
