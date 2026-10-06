@@ -1,12 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, X, Plus } from "lucide-react";
+import { Loader2, X, Plus, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { assignmentsApi, type AssignmentType } from "@/lib/assignments-api";
+import {
+  assignmentsApi,
+  classesApi,
+  type AssignmentType,
+  type StudentInfo,
+} from "@/lib/assignments-api";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +39,6 @@ export function AssignmentDialog({
   onSuccess: () => void;
   availableClasses: Array<{ id: string; name: string }>;
 }) {
-  // WICHTIG: initialer Wert auf die tatsächliche ID setzen
   const [classId, setClassId] = React.useState<string>(
     availableClasses[0]?.id ?? ""
   );
@@ -44,15 +48,38 @@ export function AssignmentDialog({
   const [type, setType] = React.useState<AssignmentType>("homework");
   const [maxPoints, setMaxPoints] = React.useState(100);
   const [dueDate, setDueDate] = React.useState("");
+  const [targetStudentId, setTargetStudentId] = React.useState<string>("");
+  const [students, setStudents] = React.useState<StudentInfo[]>([]);
+  const [loadingStudents, setLoadingStudents] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // WICHTIG: Wenn availableClasses später geladen wird und classId noch leer ist → setzen
+  // Wenn classId leer und availableClasses lädt → erste setzen
   React.useEffect(() => {
     if (!classId && availableClasses.length > 0) {
       setClassId(availableClasses[0].id);
     }
   }, [availableClasses, classId]);
+
+  // Schüler laden bei Klassenwechsel
+  React.useEffect(() => {
+    if (!classId) {
+      setStudents([]);
+      setTargetStudentId("");
+      return;
+    }
+
+    setLoadingStudents(true);
+    setTargetStudentId("");
+    classesApi
+      .students(classId)
+      .then((data) => setStudents(data.students))
+      .catch((err) => {
+        console.error("Schüler laden fehlgeschlagen:", err);
+        setStudents([]);
+      })
+      .finally(() => setLoadingStudents(false));
+  }, [classId]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -64,13 +91,13 @@ export function AssignmentDialog({
       return setError("Titel ist erforderlich");
     }
 
-    // Debug
     console.log("[AssignmentDialog] submit payload:", {
       classId,
       subjectId,
       title,
       type,
       maxPoints,
+      targetStudentId: targetStudentId || null,
     });
 
     setIsSubmitting(true);
@@ -83,6 +110,7 @@ export function AssignmentDialog({
         type,
         maxPoints,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        targetStudentId: targetStudentId || undefined,
       });
       onSuccess();
     } catch (err) {
@@ -93,6 +121,8 @@ export function AssignmentDialog({
       setIsSubmitting(false);
     }
   };
+
+  const isPersonal = !!targetStudentId;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4">
@@ -133,9 +163,6 @@ export function AssignmentDialog({
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">
-                Debug: {classId || "(leer)"}
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -155,6 +182,76 @@ export function AssignmentDialog({
               </select>
             </div>
           </div>
+
+          {/* Empfänger-Auswahl */}
+          <div className="space-y-2">
+            <Label>Für wen?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTargetStudentId("")}
+                disabled={isSubmitting}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition",
+                  !isPersonal
+                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
+                    : "border-border hover:bg-muted"
+                )}
+              >
+                <Users className="h-4 w-4" />
+                Ganze Klasse
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (students.length === 0) return;
+                  setTargetStudentId(students[0].id);
+                }}
+                disabled={isSubmitting || students.length === 0 || loadingStudents}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition",
+                  isPersonal
+                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
+                    : "border-border hover:bg-muted",
+                  (students.length === 0 || loadingStudents) &&
+                    "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <User className="h-4 w-4" />
+                Einzelner Schüler
+              </button>
+            </div>
+          </div>
+
+          {/* Schüler-Dropdown (nur wenn Einzelaufgabe) */}
+          {isPersonal && (
+            <div className="space-y-2">
+              <Label htmlFor="targetStudent">Schüler auswählen</Label>
+              {loadingStudents ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Lade Schüler...
+                </div>
+              ) : (
+                <select
+                  id="targetStudent"
+                  value={targetStudentId}
+                  onChange={(e) => setTargetStudentId(e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
+                >
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.first_name} {s.last_name} ({s.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Nur dieser Schüler sieht die Aufgabe.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="title">Titel</Label>
