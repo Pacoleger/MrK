@@ -11,32 +11,23 @@ import { handleLogout } from "./routes/auth/logout";
 import { handleMe } from "./routes/auth/me";
 
 // Welle 6: Assignments, Submissions, Uploads
-import { handleAssignments, handleAssignmentDetail } from "./routes/assignments";
+import {
+  handleAssignments,
+  handleAssignmentDetail,
+  handleAssignmentSubmissions,
+} from "./routes/assignments";
 import {
   handleStartSubmission,
   handleHeartbeat,
   handleSubmit,
   handleGrade,
 } from "./routes/submissions";
-// Admin (Welle 7c)
-import {
-  handleAdminStats,
-  handleAdminUsers,
-  handleAdminUpdateUser,
-  handleAdminClasses,
-  handleAdminDeleteClass,
-  handleAdminSchoolYears,
-} from "./routes/admin";
 import {
   handleUpload,
   handleDownload,
   handleListUploads,
 } from "./routes/uploads";
-import {
-  handleAssignments,
-  handleAssignmentDetail,
-  handleAssignmentSubmissions,  // ← NEU
-} from "./routes/assignments";
+
 // Welle 7a: Quizzes
 import {
   handleQuizzes,
@@ -46,6 +37,16 @@ import {
   handleSubmitQuizAttempt,
 } from "./routes/quizzes";
 
+// Welle 7c: Admin
+import {
+  handleAdminStats,
+  handleAdminUsers,
+  handleAdminUpdateUser,
+  handleAdminClasses,
+  handleAdminDeleteClass,
+  handleAdminSchoolYears,
+} from "./routes/admin";
+
 // Welle 6: Notifications, Stats, Classes
 import {
   handleNotifications,
@@ -53,7 +54,11 @@ import {
   handleMarkAllRead,
 } from "./routes/notifications";
 import { handleMyStats } from "./routes/stats";
-import { handleClasses, handleClassRanking } from "./routes/classes";
+import {
+  handleClasses,
+  handleClassRanking,
+  handleClassStudents,
+} from "./routes/classes";
 
 // ============================================================
 // Router-Helper
@@ -92,7 +97,7 @@ async function route(
   if (path === "/" || path === "/api") {
     return ok({
       name: "MrK API",
-      version: "0.4.0",
+      version: "0.5.0",
       environment: env.ENVIRONMENT,
       endpoints: [
         "GET    /api/health",
@@ -106,6 +111,7 @@ async function route(
         "GET    /api/assignments",
         "POST   /api/assignments",
         "GET    /api/assignments/:id",
+        "GET    /api/assignments/:id/submissions",
         // Submissions
         "POST   /api/submissions/start/:assignmentId",
         "POST   /api/submissions/heartbeat/:submissionId",
@@ -130,6 +136,7 @@ async function route(
         "GET    /api/stats/me",
         "GET    /api/classes",
         "GET    /api/classes/:id/ranking",
+        "GET    /api/classes/:id/students",
         // Admin
         "GET    /api/admin/stats",
         "GET    /api/admin/users",
@@ -159,15 +166,13 @@ async function route(
   if (path === "/api/auth/me") return handleMe(request, env);
 
   // ============================================================
-  // ============================================================
   // Assignments
   // ============================================================
   if (path === "/api/assignments") return handleAssignments(request, env);
 
   {
     const mSub = matchPath("/api/assignments/:id/submissions", path);
-    if (mSub)
-      return handleAssignmentSubmissions(request, env, mSub.id);
+    if (mSub) return handleAssignmentSubmissions(request, env, mSub.id);
 
     const m = matchPath("/api/assignments/:id", path);
     if (m) return handleAssignmentDetail(request, env, m.id);
@@ -255,6 +260,20 @@ async function route(
   // Stats
   // ============================================================
   if (path === "/api/stats/me") return handleMyStats(request, env);
+
+  // ============================================================
+  // Classes
+  // ============================================================
+  if (path === "/api/classes") return handleClasses(request, env);
+
+  {
+    const mStudents = matchPath("/api/classes/:id/students", path);
+    if (mStudents) return handleClassStudents(request, env, mStudents.id);
+
+    const mClass = matchPath("/api/classes/:id/ranking", path);
+    if (mClass) return handleClassRanking(request, env, mClass.id);
+  }
+
   // ============================================================
   // Admin
   // ============================================================
@@ -274,15 +293,6 @@ async function route(
 
   if (path === "/api/admin/school-years")
     return handleAdminSchoolYears(request, env);
-  // ============================================================
-  // Classes
-  // ============================================================
-  if (path === "/api/classes") return handleClasses(request, env);
-
-  {
-    const mClass = matchPath("/api/classes/:id/ranking", path);
-    if (mClass) return handleClassRanking(request, env, mClass.id);
-  }
 
   // ============================================================
   // 404
