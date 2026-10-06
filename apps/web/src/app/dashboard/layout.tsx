@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard",                 label: "Übersicht",     icon: LayoutDashboard },
   { href: "/dashboard/aufgaben",        label: "Aufgaben",      icon: BookOpen },
+  { href: "/dashboard/quiz",            label: "Quizze",        icon: ListChecks },
   { href: "/dashboard/klassen",         label: "Klassen",       icon: GraduationCap },
   { href: "/dashboard/erfolge",         label: "Erfolge",       icon: Trophy },
   { href: "/dashboard/einstellungen",   label: "Einstellungen", icon: Settings },
