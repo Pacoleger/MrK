@@ -41,7 +41,6 @@ export default function ErfolgePage() {
 
       <LevelProgress stats={stats} />
 
-      {/* Big Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <BigStat
           icon={Star}
@@ -70,10 +69,8 @@ export default function ErfolgePage() {
         />
       </div>
 
-      {/* Badges */}
       <BadgeGrid badges={stats.badges} max={24} />
 
-      {/* Fortschritt */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
