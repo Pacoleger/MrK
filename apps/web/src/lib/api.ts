@@ -2,9 +2,13 @@
 // API Client
 // ============================================================
 
+// Relative URL → geht über Pages Function (Reverse-Proxy)
+// Fallback: absolute URL nur falls NEXT_PUBLIC_API_URL explizit gesetzt
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://mrk-api.pacokamegne.workers.dev";
+  process.env.NEXT_PUBLIC_API_URL &&
+  process.env.NEXT_PUBLIC_API_URL !== ""
+    ? process.env.NEXT_PUBLIC_API_URL
+    : "";
 
 // ============================================================
 // Error
