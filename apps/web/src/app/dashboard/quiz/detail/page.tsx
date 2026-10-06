@@ -212,7 +212,17 @@ function QuizDetailInner() {
       quiz={state.quiz}
       questions={state.questions}
       attempt={state.attempt}
-      onFinish={load}
+      onFinish={(result) => {
+        // Direkt Ergebnis anzeigen (statt neu laden)
+        setState({
+          kind: "result",
+          score: result.score,
+          maxScore: result.maxScore,
+          percentage: result.percentage,
+          starsEarned: result.starsEarned,
+          timeSpentSec: result.timeSpentSec ?? state.attempt.time_spent_sec,
+        });
+      }}
     />
   );
 }
