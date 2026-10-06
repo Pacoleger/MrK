@@ -1,15 +1,16 @@
 "use client";
-import { MobileNav } from "@/components/mobile-nav";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
-  ListChecks,      
+  ListChecks,
   GraduationCap,
   Trophy,
-  Shield,   
   Settings,
+  Shield,
+  MessageSquare,
   Atom,
   FlaskConical,
   Leaf,
@@ -20,14 +21,16 @@ import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { NotificationBell } from "@/components/notification-bell";
+import { MobileNav } from "@/components/mobile-nav";
 import { useT } from "@/i18n/use-translation";
-import { useAuth } from "@/hooks/use-auth";   // ← NEU
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard",                 label: "Übersicht",     icon: LayoutDashboard },
   { href: "/dashboard/aufgaben",        label: "Aufgaben",      icon: BookOpen },
   { href: "/dashboard/quiz",            label: "Quizze",        icon: ListChecks },
+  { href: "/dashboard/chat",            label: "Chat",          icon: MessageSquare },
   { href: "/dashboard/klassen",         label: "Klassen",       icon: GraduationCap },
   { href: "/dashboard/erfolge",         label: "Erfolge",       icon: Trophy },
   { href: "/dashboard/einstellungen",   label: "Einstellungen", icon: Settings },
@@ -53,7 +56,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const t = useT();
-  const { user } = useAuth();   // ← NEU
+  const { user } = useAuth();
 
   return (
     <ProtectedRoute>
@@ -69,9 +72,12 @@ export default function DashboardLayout({
             </Link>
           </div>
 
-          <nav className="flex-1 p-3 space-y-1">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href ||
+                (item.href !== "/dashboard" &&
+                  pathname.startsWith(item.href));
               const Icon = item.icon;
               return (
                 <Link
@@ -90,7 +96,7 @@ export default function DashboardLayout({
               );
             })}
 
-            {/* Admin-Nav nur für Admins */}
+            {/* Admin-Nav */}
             {user?.role === "admin" && (
               <div className="pt-2 mt-2 border-t border-border">
                 <Link
