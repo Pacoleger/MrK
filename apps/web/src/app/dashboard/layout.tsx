@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
+  ListChecks,      
   GraduationCap,
   Trophy,
   Settings,
