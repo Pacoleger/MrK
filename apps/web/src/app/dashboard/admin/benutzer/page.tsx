@@ -215,4 +215,21 @@ function UserRow({
             onClick={() => onToggleActive(user.id, !isActive)}
             disabled={isSelf}
             className={cn(
-              "p-2 rounded-lg transition disabled:op
+              "p-2 rounded-lg transition disabled:opacity-30",
+              isActive
+                ? "text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-950/20"
+                : "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+            )}
+            title={isActive ? "Deaktivieren" : "Aktivieren"}
+          >
+            {isActive ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : (
+              <XCircle className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
