@@ -1,6 +1,6 @@
 import type { Env } from "../types";
 import { ok, methodNotAllowed, serverError } from "../lib/response";
-import { requireAuth, isAuthError } from "../middleware/auth";
+import { requireAuth, isAuthError, requireRole } from "../middleware/auth";
 
 // ============================================================
 // GET /api/classes — Klassen des Users
@@ -17,7 +17,6 @@ export async function handleClasses(
 
   try {
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      // Klassen, in denen der Lehrer unterrichtet oder Klassenlehrer ist
       const result = await env.DB.prepare(
         `SELECT DISTINCT c.*, sy.name AS school_year_name
          FROM classes c
@@ -88,6 +87,42 @@ export async function handleClassRanking(
     return ok({ ranking: result.results ?? [] });
   } catch (err) {
     console.error("ranking error:", err);
+    return serverError();
+  }
+}
+
+// ============================================================
+// GET /api/classes/:id/students — Schüler einer Klasse
+// ============================================================
+
+export async function handleClassStudents(
+  request: Request,
+  env: Env,
+  classId: string
+): Promise<Response> {
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  // Nur Lehrer/Admin
+  const roleErr = requireRole(ctx as never, ["teacher", "admin"]);
+  if (roleErr) return roleErr;
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT u.id, u.first_name, u.last_name, u.email
+       FROM class_students cs
+       JOIN users u ON u.id = cs.student_id
+       WHERE cs.class_id = ?
+       ORDER BY u.last_name, u.first_name`
+    )
+      .bind(classId)
+      .all();
+
+    return ok({ students: result.results ?? [] });
+  } catch (err) {
+    console.error("classStudents error:", err);
     return serverError();
   }
 }
