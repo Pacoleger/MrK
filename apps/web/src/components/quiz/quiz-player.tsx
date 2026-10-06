@@ -153,7 +153,7 @@ export function QuizPlayer({
       {/* Header */}
       <Card>
         <CardContent className="p-5">
-          <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-3">
             <div className="flex-1 min-w-0">
               <h1 className="font-semibold text-lg truncate">{quiz.title}</h1>
               <p className="text-xs text-muted-foreground">
@@ -162,7 +162,7 @@ export function QuizPlayer({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {totalTimeLimit && (
                 <Badge
                   variant={remainingSec && remainingSec < 60 ? "destructive" : "outline"}
@@ -190,7 +190,7 @@ export function QuizPlayer({
 
       {/* Question */}
       <Card>
-        <CardContent className="p-6 space-y-5">
+        <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary">Frage {currentIndex + 1}</Badge>
@@ -212,7 +212,7 @@ export function QuizPlayer({
 
       {/* Navigation */}
       <Card>
-        <CardContent className="p-4 flex items-center justify-between gap-3">
+        <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-2 sm:gap-3 safe-bottom">
           <Button
             variant="outline"
             onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
@@ -222,7 +222,7 @@ export function QuizPlayer({
             Zurück
           </Button>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             {questions.map((_, i) => (
               <button
                 key={i}
@@ -240,7 +240,12 @@ export function QuizPlayer({
               />
             ))}
           </div>
-
+          {/* Mobile Progress */}
+          <div className="sm:hidden flex-1 flex items-center gap-2 justify-center">
+            <span className="text-xs text-muted-foreground">
+              {currentIndex + 1} / {totalQuestions}
+            </span>
+          </div>
           {currentIndex < totalQuestions - 1 ? (
             <Button
               onClick={() => setCurrentIndex((i) => i + 1)}
