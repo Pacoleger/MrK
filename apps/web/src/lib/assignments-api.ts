@@ -154,6 +154,12 @@ export const assignmentsApi = {
       `/api/uploads/submission/${submissionId}`
     );
   },
+
+  submissions(assignmentId: string) {
+    return apiGet<SubmissionsResponse>(
+      `/api/assignments/${assignmentId}/submissions`
+    );
+  },
 };
 
 // ============================================================
