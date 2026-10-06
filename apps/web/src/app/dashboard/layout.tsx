@@ -21,6 +21,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { NotificationBell } from "@/components/notification-bell";
 import { useT } from "@/i18n/use-translation";
+import { useAuth } from "@/hooks/use-auth";   // ← NEU
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -52,6 +53,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const t = useT();
+  const { user } = useAuth();   // ← NEU
 
   return (
     <ProtectedRoute>
