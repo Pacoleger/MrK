@@ -9,6 +9,7 @@ import {
   XCircle,
   Clock,
   Target,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,8 +67,8 @@ export function QuizResult({
         <Card>
           <CardContent className="p-5 space-y-1">
             <div className="flex items-center gap-2 text-amber-500">
-              <Star className="h-5 w-5 fill-current" />
-              <span className="text-sm font-medium">Sterne</span>
+              <Sparkles className="h-5 w-5" />
+              <span className="text-sm font-medium">Sterne verdient</span>
             </div>
             <p className="text-2xl font-bold">+{starsEarned}</p>
           </CardContent>
