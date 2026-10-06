@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Send, X } from "lucide-react";
+import { Loader2, Send, X, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UploadZone } from "./upload-zone";
 import { assignmentsApi, type Submission } from "@/lib/assignments-api";
 import { ApiError } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export function SubmissionDialog({
   submission,
@@ -17,6 +18,7 @@ export function SubmissionDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const toast = useToast();
   const [content, setContent] = React.useState(submission.content ?? "");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -29,13 +31,13 @@ export function SubmissionDialog({
         content,
         timeSpentSec: submission.time_spent_sec,
       });
+      toast.success("Abgegeben!", "Deine Aufgabe wurde erfolgreich eingereicht.");
       onSuccess();
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Abgabe fehlgeschlagen");
-      }
+      const message =
+        err instanceof ApiError ? err.message : "Abgabe fehlgeschlagen";
+      setError(message);
+      toast.error("Fehler", message);
     } finally {
       setIsSubmitting(false);
     }
