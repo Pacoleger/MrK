@@ -165,3 +165,40 @@ export const classesApi = {
     return apiGet<{ classes: ClassInfo[] }>("/api/classes");
   },
 };
+// ============================================================
+// Submission (Lehrer-Sicht)
+// ============================================================
+
+export interface SubmissionRow {
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  submission_id: string | null;
+  status: SubmissionStatus | "not_started";
+  content: string | null;
+  started_at: string | null;
+  submitted_at: string | null;
+  time_spent_sec: number;
+  view_count: number;
+  grade_id: string | null;
+  points: number | null;
+  max_points: number | null;
+  feedback: string | null;
+  stars_awarded: number | null;
+  graded_at: string | null;
+}
+
+export interface SubmissionsStats {
+  total: number;
+  not_started: number;
+  in_progress: number;
+  submitted: number;
+  graded: number;
+}
+
+export interface SubmissionsResponse {
+  assignment: Assignment;
+  submissions: SubmissionRow[];
+  stats: SubmissionsStats;
+}
