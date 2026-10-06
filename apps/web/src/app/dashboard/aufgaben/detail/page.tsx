@@ -206,4 +206,101 @@ function AssignmentDetailContent() {
               {submission.status === "submitted" && (
                 <div className="rounded-xl bg-accent-50 dark:bg-accent-950/30 border border-accent-200 dark:border-accent-800 p-4">
                   <div className="flex items-center gap-2 text-sm text-accent-800 dark:text-accent-200">
-                    <CheckCircle2 className="
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="font-medium">Abgegeben</span>
+                  </div>
+                </div>
+              )}
+
+              {submission.content && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Deine Antwort:</p>
+                  <div className="rounded-lg border border-border bg-card p-3 text-sm whitespace-pre-wrap">
+                    {submission.content}
+                  </div>
+                </div>
+              )}
+
+              {(submission.status === "in_progress" ||
+                submission.status === "not_started") && (
+                <Button
+                  onClick={() => setShowSubmitDialog(true)}
+                  size="lg"
+                  className="w-full"
+                >
+                  <Send className="h-4 w-4" />
+                  Aufgabe abgeben
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Lehrer: Abgaben-Liste */}
+      {isTeacher && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 text-brand-500" />
+              Abgaben ({submissions.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {submissions.length === 0 ? (
+              <div className="py-8 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Noch keine Schüler in dieser Klasse.
+                </p>
+              </div>
+            ) : (
+              <SubmissionsList
+                submissions={submissions}
+                onSelect={setSelectedSubmission}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dialoge */}
+      {showSubmitDialog && submission && (
+        <SubmissionDialog
+          submission={submission}
+          onClose={() => setShowSubmitDialog(false)}
+          onSuccess={() => {
+            setShowSubmitDialog(false);
+            load();
+          }}
+        />
+      )}
+
+      {selectedSubmission && assignment && (
+        <SubmissionDetailDialog
+          submission={selectedSubmission}
+          maxPoints={assignment.max_points}
+          onClose={() => setSelectedSubmission(null)}
+          onSuccess={() => {
+            setSelectedSubmission(null);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function AssignmentDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid place-items-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <AssignmentDetailContent />
+    </Suspense>
+  );
+}
