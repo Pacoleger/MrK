@@ -1,14 +1,13 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
-  transpilePackages: ["@mrk/shared"],
+  trailingSlash: true,      // ← Wichtig!
   images: {
     unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "**.r2.cloudflarestorage.com" },
     ],
   },
-  trailingSlash: true,
+  transpilePackages: ["@mrk/shared"],
 };
 
 export default nextConfig;
