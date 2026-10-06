@@ -47,6 +47,15 @@ import {
   handleAdminSchoolYears,
 } from "./routes/admin";
 
+// Welle 8: Chat
+import {
+  handleConversations,
+  handleCreateConversation,
+  handleMessages,
+  handleSendMessage,
+  handleChatUsers,
+} from "./routes/chat";
+
 // Welle 6: Notifications, Stats, Classes
 import {
   handleNotifications,
@@ -97,7 +106,7 @@ async function route(
   if (path === "/" || path === "/api") {
     return ok({
       name: "MrK API",
-      version: "0.5.0",
+      version: "0.6.0",
       environment: env.ENVIRONMENT,
       endpoints: [
         "GET    /api/health",
@@ -146,6 +155,12 @@ async function route(
         "DELETE /api/admin/classes/:id",
         "GET    /api/admin/school-years",
         "POST   /api/admin/school-years",
+        // Chat
+        "GET    /api/chat/conversations",
+        "POST   /api/chat/conversations",
+        "GET    /api/chat/conversations/:id/messages",
+        "POST   /api/chat/conversations/:id/messages",
+        "GET    /api/chat/users",
       ],
       timestamp: new Date().toISOString(),
     });
@@ -293,6 +308,28 @@ async function route(
 
   if (path === "/api/admin/school-years")
     return handleAdminSchoolYears(request, env);
+
+  // ============================================================
+  // Chat
+  // ============================================================
+  if (path === "/api/chat/conversations") {
+    if (method === "GET") return handleConversations(request, env);
+    if (method === "POST") return handleCreateConversation(request, env);
+  }
+
+  {
+    const mConv = matchPath(
+      "/api/chat/conversations/:id/messages",
+      path
+    );
+    if (mConv) {
+      if (method === "GET") return handleMessages(request, env, mConv.id);
+      if (method === "POST")
+        return handleSendMessage(request, env, mConv.id);
+    }
+  }
+
+  if (path === "/api/chat/users") return handleChatUsers(request, env);
 
   // ============================================================
   // 404
