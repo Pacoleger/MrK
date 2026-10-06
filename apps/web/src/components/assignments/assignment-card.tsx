@@ -48,8 +48,8 @@ href={`/dashboard/aufgaben/detail?id=${assignment.id}`}
     >
       <div className={cn("h-1 bg-gradient-to-r", colorClass)} />
 
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {assignment.subject_name ?? assignment.subject_id}
@@ -78,7 +78,7 @@ href={`/dashboard/aufgaben/detail?id=${assignment.id}`}
           </Badge>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <FileText className="h-3 w-3" />
             {typeLabels[assignment.type]}
