@@ -41,7 +41,7 @@ export default function DashboardPage() {
     <div className="space-y-8 max-w-7xl">
       {/* Welcome */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           {greeting}, {user?.firstName}!
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -50,7 +50,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           label="Offene Aufgaben"
           value={isLoading ? "—" : openCount}
@@ -94,7 +94,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Grid: Level + Aufgaben */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-6">
           {stats && <LevelProgress stats={stats} />}
 
