@@ -43,7 +43,7 @@ export function AssignmentCard({ assignment }: { assignment: Assignment }) {
 
   return (
     <Link
-      href={`/dashboard/aufgaben/${assignment.id}`}
+href={`/dashboard/aufgaben/detail?id=${assignment.id}`}
       className="block rounded-2xl border border-border bg-card hover:shadow-lg hover:-translate-y-0.5 transition overflow-hidden group"
     >
       <div className={cn("h-1 bg-gradient-to-r", colorClass)} />
