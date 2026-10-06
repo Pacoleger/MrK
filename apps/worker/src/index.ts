@@ -130,6 +130,15 @@ async function route(
         "GET    /api/stats/me",
         "GET    /api/classes",
         "GET    /api/classes/:id/ranking",
+        // Admin
+        "GET    /api/admin/stats",
+        "GET    /api/admin/users",
+        "PATCH  /api/admin/users/:id",
+        "GET    /api/admin/classes",
+        "POST   /api/admin/classes",
+        "DELETE /api/admin/classes/:id",
+        "GET    /api/admin/school-years",
+        "POST   /api/admin/school-years",
       ],
       timestamp: new Date().toISOString(),
     });
@@ -246,7 +255,25 @@ async function route(
   // Stats
   // ============================================================
   if (path === "/api/stats/me") return handleMyStats(request, env);
+  // ============================================================
+  // Admin
+  // ============================================================
+  if (path === "/api/admin/stats") return handleAdminStats(request, env);
 
+  if (path === "/api/admin/users") return handleAdminUsers(request, env);
+  {
+    const m = matchPath("/api/admin/users/:id", path);
+    if (m) return handleAdminUpdateUser(request, env, m.id);
+  }
+
+  if (path === "/api/admin/classes") return handleAdminClasses(request, env);
+  {
+    const m = matchPath("/api/admin/classes/:id", path);
+    if (m) return handleAdminDeleteClass(request, env, m.id);
+  }
+
+  if (path === "/api/admin/school-years")
+    return handleAdminSchoolYears(request, env);
   // ============================================================
   // Classes
   // ============================================================
