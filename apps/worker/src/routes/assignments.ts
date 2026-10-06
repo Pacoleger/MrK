@@ -46,10 +46,12 @@ async function listAssignments(
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
       // Lehrer sieht eigene Aufgaben
       const query = `
-        SELECT a.*, s.name_de AS subject_name, c.name AS class_name
+        SELECT a.*, s.name_de AS subject_name, c.name AS class_name,
+               u.first_name AS target_first, u.last_name AS target_last
         FROM assignments a
         JOIN subjects s ON s.id = a.subject_id
         JOIN classes c ON c.id = a.class_id
+        LEFT JOIN users u ON u.id = a.target_student_id
         WHERE a.teacher_id = ?
           ${classId ? "AND a.class_id = ?" : ""}
           ${subjectId ? "AND a.subject_id = ?" : ""}
@@ -63,7 +65,7 @@ async function listAssignments(
       return ok({ assignments: result.results ?? [] });
     }
 
-    // Schüler sieht Aufgaben seiner Klassen
+    // Schüler sieht Aufgaben seiner Klassen + persönliche Aufgaben
     const query = `
       SELECT a.*, s.name_de AS subject_name, c.name AS class_name,
              sub.status AS submission_status,
@@ -75,10 +77,11 @@ async function listAssignments(
       JOIN class_students cs ON cs.class_id = a.class_id AND cs.student_id = ?
       LEFT JOIN submissions sub ON sub.assignment_id = a.id AND sub.student_id = ?
       WHERE a.is_published = 1
+        AND (a.target_student_id IS NULL OR a.target_student_id = ?)
       ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC
     `;
     const result = await env.DB.prepare(query)
-      .bind(ctx.user.id, ctx.user.id)
+      .bind(ctx.user.id, ctx.user.id, ctx.user.id)
       .all();
 
     return ok({ assignments: result.results ?? [] });
@@ -109,6 +112,7 @@ async function createAssignment(
     type?: string;
     maxPoints?: number;
     dueDate?: string;
+    targetStudentId?: string;
   };
 
   try {
@@ -117,13 +121,12 @@ async function createAssignment(
     return fail("INVALID_JSON", "Ungültiger Request-Body", 400);
   }
 
-  // 3. Debug: Was kommt an?
   console.log("[createAssignment] ============================================");
   console.log("[createAssignment] payload:", JSON.stringify(body, null, 2));
   console.log("[createAssignment] teacherId:", ctx.user.id);
   console.log("[createAssignment] ============================================");
 
-  // 4. Validierung
+  // 3. Validierung
   if (!body.classId || typeof body.classId !== "string" || !body.classId.trim()) {
     return fail("CLASS_REQUIRED", "classId ist erforderlich", 400);
   }
@@ -148,7 +151,7 @@ async function createAssignment(
 
   const maxPoints = Math.min(Math.max(Number(body.maxPoints) || 100, 1), 1000);
 
-  // 5. dueDate robust normalisieren
+  // 4. dueDate robust normalisieren
   let dueDate: string | null = null;
   if (
     body.dueDate &&
@@ -165,16 +168,7 @@ async function createAssignment(
     }
   }
 
-  console.log("[createAssignment] normalized values:", {
-    classId: body.classId,
-    subjectId: body.subjectId,
-    title: body.title!.trim(),
-    type,
-    maxPoints,
-    dueDate,
-  });
-
-  // 6. Klasse prüfen
+  // 5. Klasse prüfen
   try {
     const classExists = await env.DB.prepare(
       "SELECT id, name FROM classes WHERE id = ?"
@@ -183,7 +177,6 @@ async function createAssignment(
       .first<{ id: string; name: string }>();
 
     if (!classExists) {
-      // Zeige alle existierenden Klassen im Log
       const allClasses = await env.DB.prepare(
         "SELECT id, name FROM classes"
       ).all<{ id: string; name: string }>();
@@ -208,7 +201,7 @@ async function createAssignment(
     return serverError("Datenbankfehler bei der Klassenprüfung");
   }
 
-  // 7. Fach prüfen
+  // 6. Fach prüfen
   try {
     const subjectExists = await env.DB.prepare(
       "SELECT id FROM subjects WHERE id = ?"
@@ -228,6 +221,31 @@ async function createAssignment(
     return serverError("Datenbankfehler bei der Fachprüfung");
   }
 
+  // 7. Target-Student prüfen (falls angegeben)
+  let targetStudentId: string | null = null;
+  if (body.targetStudentId) {
+    try {
+      const enrolled = await env.DB.prepare(
+        "SELECT id FROM class_students WHERE class_id = ? AND student_id = ?"
+      )
+        .bind(body.classId.trim(), body.targetStudentId)
+        .first<{ id: string }>();
+
+      if (!enrolled) {
+        return fail(
+          "STUDENT_NOT_IN_CLASS",
+          "Der Schüler ist nicht in dieser Klasse",
+          400
+        );
+      }
+
+      targetStudentId = body.targetStudentId;
+    } catch (err) {
+      console.error("[createAssignment] DB target student check failed:", err);
+      return serverError("Datenbankfehler bei der Schülerprüfung");
+    }
+  }
+
   // 8. INSERT
   const id = uuid();
 
@@ -238,12 +256,13 @@ async function createAssignment(
       subjectId: body.subjectId.trim(),
       teacherId: ctx.user.id,
       title: body.title!.trim(),
+      targetStudentId,
     });
 
     await env.DB.prepare(
       `INSERT INTO assignments
-        (id, class_id, subject_id, teacher_id, title, description, type, max_points, due_date, is_published)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+        (id, class_id, subject_id, teacher_id, title, description, type, max_points, due_date, is_published, target_student_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`
     )
       .bind(
         id,
@@ -254,7 +273,8 @@ async function createAssignment(
         body.description?.trim() || null,
         type,
         maxPoints,
-        dueDate
+        dueDate,
+        targetStudentId
       )
       .run();
 
@@ -266,30 +286,42 @@ async function createAssignment(
     );
   }
 
-  // 9. Notifications (best-effort, blockiert nicht)
+  // 9. Notifications
   try {
-    const students = await env.DB.prepare(
-      "SELECT student_id FROM class_students WHERE class_id = ?"
-    )
-      .bind(body.classId.trim())
-      .all<{ student_id: string }>();
-
-    for (const s of students.results ?? []) {
+    if (targetStudentId) {
+      // Nur an den Ziel-Schüler
       await createNotification(
         env,
-        s.student_id,
+        targetStudentId,
         "new_assignment",
-        "Neue Aufgabe",
+        "Neue persönliche Aufgabe",
         body.title!.trim(),
-        `/dashboard/aufgaben/${id}`
+        `/dashboard/aufgaben/detail?id=${id}`
       );
+    } else {
+      // An alle Schüler der Klasse
+      const students = await env.DB.prepare(
+        "SELECT student_id FROM class_students WHERE class_id = ?"
+      )
+        .bind(body.classId.trim())
+        .all<{ student_id: string }>();
+
+      for (const s of students.results ?? []) {
+        await createNotification(
+          env,
+          s.student_id,
+          "new_assignment",
+          "Neue Aufgabe",
+          body.title!.trim(),
+          `/dashboard/aufgaben/detail?id=${id}`
+        );
+      }
     }
   } catch (err) {
     console.error("[createAssignment] notification failed:", err);
-    // nicht fatal
   }
 
-  // 10. Activity Log (best-effort)
+  // 10. Activity Log
   try {
     await logActivity(env, {
       userId: ctx.user.id,
@@ -300,7 +332,6 @@ async function createAssignment(
     });
   } catch (err) {
     console.error("[createAssignment] logActivity failed:", err);
-    // nicht fatal
   }
 
   return ok({ id, message: "Aufgabe erstellt" });
@@ -324,11 +355,13 @@ export async function handleAssignmentDetail(
 
   const assignment = await env.DB.prepare(
     `SELECT a.*, s.name_de AS subject_name, c.name AS class_name,
-            u.first_name AS teacher_first, u.last_name AS teacher_last
+            u.first_name AS teacher_first, u.last_name AS teacher_last,
+            target.first_name AS target_first, target.last_name AS target_last
      FROM assignments a
      JOIN subjects s ON s.id = a.subject_id
      JOIN classes c ON c.id = a.class_id
      JOIN users u ON u.id = a.teacher_id
+     LEFT JOIN users target ON target.id = a.target_student_id
      WHERE a.id = ?`
   )
     .bind(id)
@@ -338,6 +371,8 @@ export async function handleAssignmentDetail(
         class_name: string;
         teacher_first: string;
         teacher_last: string;
+        target_first: string | null;
+        target_last: string | null;
       }
     >();
 
@@ -353,6 +388,14 @@ export async function handleAssignmentDetail(
 
     if (!enrolled) {
       return fail("FORBIDDEN", "Nicht in dieser Klasse eingeschrieben", 403);
+    }
+
+    // Falls persönliche Aufgabe → prüfen ob für diesen Schüler
+    if (
+      assignment.target_student_id &&
+      assignment.target_student_id !== ctx.user.id
+    ) {
+      return fail("FORBIDDEN", "Diese Aufgabe ist nicht für dich", 403);
     }
 
     // Submission laden oder anlegen
@@ -385,6 +428,7 @@ export async function handleAssignmentDetail(
   // Lehrer / Admin
   return ok({ assignment });
 }
+
 // ============================================================
 // GET /api/assignments/:id/submissions — Alle Abgaben (Lehrer)
 // ============================================================
@@ -402,7 +446,6 @@ export async function handleAssignmentSubmissions(
   const roleErr = requireRole(ctx as never, ["teacher", "admin"]);
   if (roleErr) return roleErr;
 
-  // Aufgabe prüfen
   const assignment = await env.DB.prepare(
     `SELECT a.*, s.name_de AS subject_name, c.name AS class_name
      FROM assignments a
@@ -415,12 +458,10 @@ export async function handleAssignmentSubmissions(
 
   if (!assignment) return notFound("Aufgabe nicht gefunden");
 
-  // Zugriff prüfen: nur eigene Aufgabe
   if (ctx.user.role === "teacher" && assignment.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Diese Aufgabe gehört dir nicht", 403);
   }
 
-  // Alle Schüler der Klasse + Abgaben laden
   const submissions = await env.DB.prepare(
     `SELECT
        u.id AS student_id,
@@ -450,7 +491,6 @@ export async function handleAssignmentSubmissions(
     .bind(assignmentId, assignment.class_id)
     .all();
 
-  // Statistiken
   const stats = {
     total: submissions.results?.length ?? 0,
     not_started: 0,
