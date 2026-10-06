@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { chatApi, type Conversation, type Message } from "@/lib/chat-api";
 
+
 const POLL_INTERVAL_MS = 5000;
 
 export function ChatWindow({
