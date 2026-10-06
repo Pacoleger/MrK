@@ -385,3 +385,92 @@ export async function handleAssignmentDetail(
   // Lehrer / Admin
   return ok({ assignment });
 }
+// ============================================================
+// GET /api/assignments/:id/submissions — Alle Abgaben (Lehrer)
+// ============================================================
+
+export async function handleAssignmentSubmissions(
+  request: Request,
+  env: Env,
+  assignmentId: string
+): Promise<Response> {
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  const roleErr = requireRole(ctx as never, ["teacher", "admin"]);
+  if (roleErr) return roleErr;
+
+  // Aufgabe prüfen
+  const assignment = await env.DB.prepare(
+    `SELECT a.*, s.name_de AS subject_name, c.name AS class_name
+     FROM assignments a
+     JOIN subjects s ON s.id = a.subject_id
+     JOIN classes c ON c.id = a.class_id
+     WHERE a.id = ?`
+  )
+    .bind(assignmentId)
+    .first<DbAssignment & { subject_name: string; class_name: string }>();
+
+  if (!assignment) return notFound("Aufgabe nicht gefunden");
+
+  // Zugriff prüfen: nur eigene Aufgabe
+  if (ctx.user.role === "teacher" && assignment.teacher_id !== ctx.user.id) {
+    return fail("FORBIDDEN", "Diese Aufgabe gehört dir nicht", 403);
+  }
+
+  // Alle Schüler der Klasse + Abgaben laden
+  const submissions = await env.DB.prepare(
+    `SELECT
+       u.id AS student_id,
+       u.first_name,
+       u.last_name,
+       u.email,
+       s.id AS submission_id,
+       s.status,
+       s.content,
+       s.started_at,
+       s.submitted_at,
+       s.time_spent_sec,
+       s.view_count,
+       g.id AS grade_id,
+       g.points,
+       g.max_points,
+       g.feedback,
+       g.stars_awarded,
+       g.graded_at
+     FROM class_students cs
+     JOIN users u ON u.id = cs.student_id
+     LEFT JOIN submissions s ON s.assignment_id = ? AND s.student_id = u.id
+     LEFT JOIN grades g ON g.submission_id = s.id
+     WHERE cs.class_id = ?
+     ORDER BY u.last_name, u.first_name`
+  )
+    .bind(assignmentId, assignment.class_id)
+    .all();
+
+  // Statistiken
+  const stats = {
+    total: submissions.results?.length ?? 0,
+    not_started: 0,
+    in_progress: 0,
+    submitted: 0,
+    graded: 0,
+  };
+
+  for (const row of submissions.results ?? []) {
+    const r = row as Record<string, unknown>;
+    const status = (r.status as string) ?? "not_started";
+    if (status === "not_started") stats.not_started++;
+    else if (status === "in_progress") stats.in_progress++;
+    else if (status === "submitted") stats.submitted++;
+    else if (status === "graded") stats.graded++;
+  }
+
+  return ok({
+    assignment,
+    submissions: submissions.results ?? [],
+    stats,
+  });
+}
