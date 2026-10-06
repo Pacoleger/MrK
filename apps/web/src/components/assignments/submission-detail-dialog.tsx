@@ -326,7 +326,7 @@ function SubmissionUploads({ submissionId }: { submissionId: string }) {
         {uploads.map((u) => (
           <a
             key={u.id}
-            href={`https://mrk-api.pacokamegne.workers.dev/api/uploads/${u.id}/download`}
+            href={`/api/uploads/${u.id}/download`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-brand-400 transition"
