@@ -18,6 +18,15 @@ import {
   handleSubmit,
   handleGrade,
 } from "./routes/submissions";
+// Admin (Welle 7c)
+import {
+  handleAdminStats,
+  handleAdminUsers,
+  handleAdminUpdateUser,
+  handleAdminClasses,
+  handleAdminDeleteClass,
+  handleAdminSchoolYears,
+} from "./routes/admin";
 import {
   handleUpload,
   handleDownload,
