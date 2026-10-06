@@ -207,11 +207,13 @@ function QuizDetailInner() {
     );
   }
 
+  const currentAttempt = state.attempt;
+
   return (
     <QuizPlayer
       quiz={state.quiz}
       questions={state.questions}
-      attempt={state.attempt}
+      attempt={currentAttempt}
       onFinish={(result) => {
         // Direkt Ergebnis anzeigen (statt neu laden)
         setState({
@@ -220,7 +222,7 @@ function QuizDetailInner() {
           maxScore: result.maxScore,
           percentage: result.percentage,
           starsEarned: result.starsEarned,
-          timeSpentSec: result.timeSpentSec ?? state.attempt.time_spent_sec,
+          timeSpentSec: result.timeSpentSec ?? currentAttempt.time_spent_sec,
         });
       }}
     />
