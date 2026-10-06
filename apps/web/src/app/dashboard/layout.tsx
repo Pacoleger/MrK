@@ -8,6 +8,7 @@ import {
   ListChecks,      
   GraduationCap,
   Trophy,
+  Shield,   
   Settings,
   Atom,
   FlaskConical,
@@ -30,6 +31,12 @@ const navItems = [
   { href: "/dashboard/erfolge",         label: "Erfolge",       icon: Trophy },
   { href: "/dashboard/einstellungen",   label: "Einstellungen", icon: Settings },
 ];
+
+const adminNavItem = {
+  href: "/dashboard/admin",
+  label: "Admin",
+  icon: Shield,
+};
 
 const subjects = [
   { key: "math",      icon: Sigma,        color: "from-brand-500 to-brand-700" },
@@ -80,6 +87,24 @@ export default function DashboardLayout({
                 </Link>
               );
             })}
+
+            {/* Admin-Nav nur für Admins */}
+            {user?.role === "admin" && (
+              <div className="pt-2 mt-2 border-t border-border">
+                <Link
+                  href={adminNavItem.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
+                    pathname.startsWith(adminNavItem.href)
+                      ? "bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <adminNavItem.icon className="h-4 w-4" />
+                  {adminNavItem.label}
+                </Link>
+              </div>
+            )}
           </nav>
 
           <div className="p-3 border-t border-border">
