@@ -23,7 +23,11 @@ import {
   handleDownload,
   handleListUploads,
 } from "./routes/uploads";
-
+import {
+  handleAssignments,
+  handleAssignmentDetail,
+  handleAssignmentSubmissions,  // ← NEU
+} from "./routes/assignments";
 // Welle 7a: Quizzes
 import {
   handleQuizzes,
@@ -137,11 +141,16 @@ async function route(
   if (path === "/api/auth/me") return handleMe(request, env);
 
   // ============================================================
+  // ============================================================
   // Assignments
   // ============================================================
   if (path === "/api/assignments") return handleAssignments(request, env);
 
   {
+    const mSub = matchPath("/api/assignments/:id/submissions", path);
+    if (mSub)
+      return handleAssignmentSubmissions(request, env, mSub.id);
+
     const m = matchPath("/api/assignments/:id", path);
     if (m) return handleAssignmentDetail(request, env, m.id);
   }
