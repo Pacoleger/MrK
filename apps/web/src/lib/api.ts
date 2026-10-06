@@ -2,13 +2,9 @@
 // API Client
 // ============================================================
 
-// Relative URL → geht über Pages Function (Reverse-Proxy)
-// Fallback: absolute URL nur falls NEXT_PUBLIC_API_URL explizit gesetzt
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL &&
-  process.env.NEXT_PUBLIC_API_URL !== ""
-    ? process.env.NEXT_PUBLIC_API_URL
-    : "";
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://mrk-api.pacokamegne.workers.dev";
 
 // ============================================================
 // Error
@@ -101,13 +97,13 @@ export async function apiFetch<T = unknown>(
     try {
       const response = await fetch(url, requestInit);
 
-      // ----- Server Error → Retry -----
+      // Server Error → Retry
       if (response.status >= 500 && attempt < retries) {
         await sleep(300 * Math.pow(2, attempt));
         continue;
       }
 
-      // ----- JSON parsen -----
+      // JSON parsen
       let json: ApiResponse<T>;
       try {
         json = (await response.json()) as ApiResponse<T>;
@@ -119,7 +115,7 @@ export async function apiFetch<T = unknown>(
         );
       }
 
-      // ----- Fehler-Antwort -----
+      // Fehler-Antwort
       if (!json.success) {
         // 401 → Session abgelaufen
         if (response.status === 401 && !skipAuthRedirect) {
