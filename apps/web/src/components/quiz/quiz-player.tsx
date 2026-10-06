@@ -29,7 +29,13 @@ export function QuizPlayer({
   quiz: Quiz;
   questions: QuizQuestion[];
   attempt: QuizAttempt;
-  onFinish: () => void;
+  onFinish: (result: {
+    score: number;
+    maxScore: number;
+    percentage: number;
+    starsEarned: number;
+    timeSpentSec?: number;
+  }) => void;
 }) {
   const [attempt] = React.useState(initialAttempt);
   const [currentIndex, setCurrentIndex] = React.useState(0);
@@ -95,8 +101,14 @@ export function QuizPlayer({
     setError(null);
     setIsSubmitting(true);
     try {
-      await quizzesApi.submitAttempt(attempt.id);
-      onFinish();
+      const result = await quizzesApi.submitAttempt(attempt.id);
+      onFinish({
+        score: result.score,
+        maxScore: result.maxScore,
+        percentage: result.percentage,
+        starsEarned: result.starsEarned,
+        timeSpentSec: elapsedSec,
+      });
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Abgabe fehlgeschlagen"
