@@ -168,8 +168,8 @@ function UserRow({
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4 flex-wrap">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
             {initials}
           </div>
@@ -193,41 +193,46 @@ function UserRow({
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
 
-          {/* Rolle ändern */}
-          <select
-            value={user.role}
-            onChange={(e) => onUpdateRole(user.id, e.target.value)}
-            disabled={isSelf}
-            className="h-9 rounded-lg border border-border bg-card px-3 text-sm disabled:opacity-50"
-          >
-            <option value="admin">Admin</option>
-            <option value="teacher">Lehrer</option>
-            <option value="student">Schüler</option>
-          </select>
+           {/* Actions */}
+          <div className="flex items-center gap-2 sm:shrink-0">
+            <select
+              value={user.role}
+              onChange={(e) => onUpdateRole(user.id, e.target.value)}
+              disabled={isSelf}
+              className="flex-1 sm:flex-none h-10 rounded-lg border border-border bg-card px-3 text-sm disabled:opacity-50"
+            >
+              <option value="admin">Admin</option>
+              <option value="teacher">Lehrer</option>
+              <option value="student">Schüler</option>
+            </select>
 
-          <Badge variant="secondary" className="gap-1 shrink-0">
-            <RoleIcon className="h-3 w-3" />
-            {user.role === "admin" ? "Admin" : user.role === "teacher" ? "Lehrer" : "Schüler"}
-          </Badge>
+            <Badge variant="secondary" className="gap-1 shrink-0 hidden sm:flex">
+              <RoleIcon className="h-3 w-3" />
+              {user.role === "admin"
+                ? "Admin"
+                : user.role === "teacher"
+                ? "Lehrer"
+                : "Schüler"}
+            </Badge>
 
-          {/* Aktivieren/Deaktivieren */}
-          <button
-            onClick={() => onToggleActive(user.id, !isActive)}
-            disabled={isSelf}
-            className={cn(
-              "p-2 rounded-lg transition disabled:opacity-30",
-              isActive
-                ? "text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-950/20"
-                : "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
-            )}
-            title={isActive ? "Deaktivieren" : "Aktivieren"}
-          >
-            {isActive ? (
-              <CheckCircle2 className="h-4 w-4" />
-            ) : (
-              <XCircle className="h-4 w-4" />
-            )}
-          </button>
+            <button
+              onClick={() => onToggleActive(user.id, !isActive)}
+              disabled={isSelf}
+              className={cn(
+                "p-2 rounded-lg transition disabled:opacity-30 touch-target shrink-0",
+                isActive
+                  ? "text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-950/20"
+                  : "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+              )}
+              title={isActive ? "Deaktivieren" : "Aktivieren"}
+            >
+              {isActive ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>
