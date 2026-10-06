@@ -59,3 +59,166 @@ export interface CreateAssignmentData {
   classId: string;
   subjectId: string;
   title: string;
+  description?: string;
+  type?: AssignmentType;
+  maxPoints?: number;
+  dueDate?: string;
+  targetStudentId?: string;
+}
+
+export interface ClassInfo {
+  id: string;
+  name: string;
+  grade_level: number;
+  school_year_name?: string;
+}
+
+export interface StudentInfo {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
+export interface SubmissionRow {
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  submission_id: string | null;
+  status: SubmissionStatus | "not_started";
+  content: string | null;
+  started_at: string | null;
+  submitted_at: string | null;
+  time_spent_sec: number;
+  view_count: number;
+  grade_id: string | null;
+  points: number | null;
+  max_points: number | null;
+  feedback: string | null;
+  stars_awarded: number | null;
+  graded_at: string | null;
+}
+
+export interface SubmissionsStats {
+  total: number;
+  not_started: number;
+  in_progress: number;
+  submitted: number;
+  graded: number;
+}
+
+export interface SubmissionsResponse {
+  assignment: Assignment;
+  submissions: SubmissionRow[];
+  stats: SubmissionsStats;
+}
+
+// ============================================================
+// Assignments API
+// ============================================================
+
+export const assignmentsApi = {
+  list(params?: { classId?: string; subjectId?: string }) {
+    const query = new URLSearchParams();
+    if (params?.classId) query.set("classId", params.classId);
+    if (params?.subjectId) query.set("subjectId", params.subjectId);
+    const qs = query.toString();
+    return apiGet<{ assignments: Assignment[] }>(
+      `/api/assignments${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  detail(id: string) {
+    return apiGet<{ assignment: Assignment; submission?: Submission }>(
+      `/api/assignments/${id}`
+    );
+  },
+
+  create(data: CreateAssignmentData) {
+    return apiPost<{ id: string; message: string }>("/api/assignments", data);
+  },
+
+  start(assignmentId: string) {
+    return apiPost<{ submission: Submission }>(
+      `/api/submissions/start/${assignmentId}`
+    );
+  },
+
+  heartbeat(submissionId: string, seconds: number, viewCount = 0) {
+    return apiPost<{ message: string }>(
+      `/api/submissions/heartbeat/${submissionId}`,
+      { seconds, viewCount }
+    );
+  },
+
+  submit(submissionId: string, data: { content?: string; timeSpentSec?: number }) {
+    return apiPost<{ message: string; submissionId: string }>(
+      `/api/submissions/submit/${submissionId}`,
+      data
+    );
+  },
+
+  grade(
+    submissionId: string,
+    data: { points: number; maxPoints: number; feedback?: string; starsAwarded?: number }
+  ) {
+    return apiPost<{ message: string }>(
+      `/api/submissions/grade/${submissionId}`,
+      data
+    );
+  },
+
+  submissions(assignmentId: string) {
+    return apiGet<SubmissionsResponse>(
+      `/api/assignments/${assignmentId}/submissions`
+    );
+  },
+
+  uploadFile(
+    file: File,
+    submissionId?: string,
+    assignmentId?: string
+  ): Promise<{ id: string; url: string; fileName: string; size: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (submissionId) formData.append("submissionId", submissionId);
+    if (assignmentId) formData.append("assignmentId", assignmentId);
+
+    return fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? "https://mrk-api.pacokamegne.workers.dev"}/api/uploads`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      }
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.success) throw new Error(j.error?.message ?? "Upload failed");
+        return j.data;
+      });
+  },
+
+  listUploads(submissionId: string) {
+    return apiGet<{ uploads: Upload[] }>(
+      `/api/uploads/submission/${submissionId}`
+    );
+  },
+};
+
+// ============================================================
+// Classes API
+// ============================================================
+
+export const classesApi = {
+  list() {
+    return apiGet<{ classes: ClassInfo[] }>("/api/classes");
+  },
+
+  students(classId: string) {
+    return apiGet<{ students: StudentInfo[] }>(
+      `/api/classes/${classId}/students`
+    );
+  },
+};
