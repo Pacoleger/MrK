@@ -76,7 +76,6 @@ export default function KlassenPage() {
         </p>
       </div>
 
-      {/* Klassen-Auswahl */}
       <div className="flex flex-wrap gap-2">
         {classes.map((c) => (
           <button
@@ -95,7 +94,6 @@ export default function KlassenPage() {
         ))}
       </div>
 
-      {/* Rangliste */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -119,10 +117,10 @@ export default function KlassenPage() {
                   key={entry.id}
                   className={cn(
                     "flex items-center gap-4 p-3 rounded-xl border border-border",
-                    idx === 0 && "bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-950/20"
+                    idx === 0 &&
+                      "bg-gradient-to-r from-amber-50 to-transparent dark:from-amber-950/20"
                   )}
                 >
-                  {/* Rang */}
                   <div
                     className={cn(
                       "w-9 h-9 rounded-full grid place-items-center font-bold text-sm shrink-0",
@@ -138,7 +136,6 @@ export default function KlassenPage() {
                     {idx + 1}
                   </div>
 
-                  {/* Name */}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">
                       {entry.first_name} {entry.last_name}
@@ -148,7 +145,6 @@ export default function KlassenPage() {
                     </p>
                   </div>
 
-                  {/* Sterne */}
                   <Badge variant="secondary" className="gap-1 shrink-0">
                     <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                     {entry.total_stars}
