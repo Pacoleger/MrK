@@ -135,7 +135,7 @@ export const assignmentsApi = {
     if (assignmentId) formData.append("assignmentId", assignmentId);
 
     return fetch(
-      `${process.env.NEXT_PUBLIC_API_URL ?? "https://mrk-api.pacokamegne.workers.dev"}/api/uploads`,
+      `/api/uploads`,
       {
         method: "POST",
         credentials: "include",
