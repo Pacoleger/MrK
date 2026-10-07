@@ -67,6 +67,7 @@ import {
   handleClasses,
   handleClassRanking,
   handleClassStudents,
+  handlePublicClasses,
 } from "./routes/classes";
 
 // ============================================================
@@ -276,9 +277,12 @@ async function route(
   // ============================================================
   if (path === "/api/stats/me") return handleMyStats(request, env);
 
-  // ============================================================
+    // ============================================================
   // Classes
   // ============================================================
+  if (path === "/api/classes/public")
+    return handlePublicClasses(request, env);
+
   if (path === "/api/classes") return handleClasses(request, env);
 
   {
