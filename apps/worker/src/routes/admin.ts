@@ -144,19 +144,16 @@ export async function handleAdminUpdateUser(
     return fail("INVALID_JSON", "Ungültiger Body", 400);
   }
 
-  // Prüfe User existiert
   const user = await env.DB.prepare("SELECT id, role FROM users WHERE id = ?")
     .bind(userId)
     .first<{ id: string; role: string }>();
 
   if (!user) return notFound("Benutzer nicht gefunden");
 
-  // Selbst-Deaktivierung verhindern
   if (userId === ctx.user.id && body.isActive === false) {
     return fail("CANNOT_DEACTIVATE_SELF", "Du kannst dich nicht selbst deaktivieren", 400);
   }
 
-  // Selbst-Rollenwechsel verhindern
   if (userId === ctx.user.id && body.role && body.role !== "admin") {
     return fail("CANNOT_DEMOTE_SELF", "Du kannst dich nicht selbst degradieren", 400);
   }
@@ -340,6 +337,291 @@ export async function handleAdminDeleteClass(
 }
 
 // ============================================================
+// GET /api/admin/classes/:id — Klassen-Detail
+// ============================================================
+
+export async function handleAdminClassDetail(
+  request: Request,
+  env: Env,
+  classId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  try {
+    const cls = await env.DB.prepare(
+      `SELECT c.*, sy.name AS school_year_name,
+              u.first_name AS teacher_first, u.last_name AS teacher_last
+       FROM classes c
+       LEFT JOIN school_years sy ON sy.id = c.school_year_id
+       LEFT JOIN users u ON u.id = c.homeroom_teacher_id
+       WHERE c.id = ?`
+    )
+      .bind(classId)
+      .first();
+
+    if (!cls) return notFound("Klasse nicht gefunden");
+
+    // Schüler in der Klasse
+    const students = await env.DB.prepare(
+      `SELECT u.id, u.first_name, u.last_name, u.email, cs.enrolled_at
+       FROM class_students cs
+       JOIN users u ON u.id = cs.student_id
+       WHERE cs.class_id = ?
+       ORDER BY u.last_name, u.first_name`
+    )
+      .bind(classId)
+      .all();
+
+    // Fächer-Zuordnungen
+    const subjects = await env.DB.prepare(
+      `SELECT cs.id, cs.subject_id, s.name_de AS subject_name,
+              u.id AS teacher_id, u.first_name AS teacher_first, u.last_name AS teacher_last
+       FROM class_subjects cs
+       JOIN subjects s ON s.id = cs.subject_id
+       LEFT JOIN users u ON u.id = cs.teacher_id
+       WHERE cs.class_id = ?`
+    )
+      .bind(classId)
+      .all();
+
+    return ok({
+      class: cls,
+      students: students.results ?? [],
+      subjects: subjects.results ?? [],
+    });
+  } catch (err) {
+    console.error("adminClassDetail error:", err);
+    return serverError();
+  }
+}
+
+// ============================================================
+// GET /api/admin/classes/:id/available-students — Schüler, die noch nicht in der Klasse sind
+// ============================================================
+
+export async function handleAvailableStudents(
+  request: Request,
+  env: Env,
+  classId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT u.id, u.first_name, u.last_name, u.email
+       FROM users u
+       WHERE u.role = 'student'
+         AND u.is_active = 1
+         AND u.id NOT IN (
+           SELECT student_id FROM class_students WHERE class_id = ?
+         )
+       ORDER BY u.last_name, u.first_name`
+    )
+      .bind(classId)
+      .all();
+
+    return ok({ students: result.results ?? [] });
+  } catch (err) {
+    console.error("availableStudents error:", err);
+    return serverError();
+  }
+}
+
+// ============================================================
+// POST /api/admin/classes/:id/students — Schüler zur Klasse hinzufügen
+// Body: { studentId: string }
+// ============================================================
+
+export async function handleAddStudentToClass(
+  request: Request,
+  env: Env,
+  classId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "POST") return methodNotAllowed(["POST"]);
+
+  let body: { studentId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return fail("INVALID_JSON", "Ungültiger Body", 400);
+  }
+
+  if (!body.studentId) return fail("STUDENT_REQUIRED", "studentId fehlt", 400);
+
+  // Prüfe Schüler existiert
+  const student = await env.DB.prepare(
+    "SELECT id FROM users WHERE id = ? AND role = 'student'"
+  )
+    .bind(body.studentId)
+    .first<{ id: string }>();
+
+  if (!student) return notFound("Schüler nicht gefunden");
+
+  // Prüfe Klasse existiert
+  const cls = await env.DB.prepare("SELECT id FROM classes WHERE id = ?")
+    .bind(classId)
+    .first<{ id: string }>();
+
+  if (!cls) return notFound("Klasse nicht gefunden");
+
+  // Prüfe nicht schon drin
+  const existing = await env.DB.prepare(
+    "SELECT id FROM class_students WHERE class_id = ? AND student_id = ?"
+  )
+    .bind(classId, body.studentId)
+    .first<{ id: string }>();
+
+  if (existing) {
+    return fail("ALREADY_ENROLLED", "Schüler ist bereits in dieser Klasse", 409);
+  }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO class_students (id, class_id, student_id)
+       VALUES (?, ?, ?)`
+    )
+      .bind(uuid(), classId, body.studentId)
+      .run();
+  } catch (err) {
+    console.error("addStudent error:", err);
+    return serverError("Schüler konnte nicht hinzugefügt werden");
+  }
+
+  await logActivity(env, {
+    userId: ctx.user.id,
+    action: "admin_action",
+    targetType: "class",
+    targetId: classId,
+    metadata: { action: "add_student", studentId: body.studentId },
+    request,
+  });
+
+  return ok({ message: "Schüler hinzugefügt" });
+}
+
+// ============================================================
+// DELETE /api/admin/classes/:classId/students/:studentId — Schüler entfernen
+// ============================================================
+
+export async function handleRemoveStudentFromClass(
+  request: Request,
+  env: Env,
+  classId: string,
+  studentId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "DELETE") return methodNotAllowed(["DELETE"]);
+
+  try {
+    await env.DB.prepare(
+      "DELETE FROM class_students WHERE class_id = ? AND student_id = ?"
+    )
+      .bind(classId, studentId)
+      .run();
+  } catch (err) {
+    console.error("removeStudent error:", err);
+    return serverError("Schüler konnte nicht entfernt werden");
+  }
+
+  await logActivity(env, {
+    userId: ctx.user.id,
+    action: "admin_action",
+    targetType: "class",
+    targetId: classId,
+    metadata: { action: "remove_student", studentId },
+    request,
+  });
+
+  return ok({ message: "Schüler entfernt" });
+}
+
+// ============================================================
+// POST /api/admin/classes/:id/homeroom — Klassenlehrer zuweisen
+// Body: { teacherId: string | null }
+// ============================================================
+
+export async function handleSetHomeroomTeacher(
+  request: Request,
+  env: Env,
+  classId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "POST") return methodNotAllowed(["POST"]);
+
+  let body: { teacherId?: string | null };
+  try {
+    body = await request.json();
+  } catch {
+    return fail("INVALID_JSON", "Ungültiger Body", 400);
+  }
+
+  // Prüfe Teacher (falls angegeben)
+  if (body.teacherId) {
+    const teacher = await env.DB.prepare(
+      "SELECT id FROM users WHERE id = ? AND role IN ('teacher', 'admin')"
+    )
+      .bind(body.teacherId)
+      .first<{ id: string }>();
+
+    if (!teacher) return notFound("Lehrer nicht gefunden");
+  }
+
+  try {
+    await env.DB.prepare(
+      "UPDATE classes SET homeroom_teacher_id = ? WHERE id = ?"
+    )
+      .bind(body.teacherId || null, classId)
+      .run();
+  } catch (err) {
+    console.error("setHomeroomTeacher error:", err);
+    return serverError("Klassenlehrer konnte nicht zugewiesen werden");
+  }
+
+  return ok({ message: "Klassenlehrer aktualisiert" });
+}
+
+// ============================================================
+// GET /api/admin/teachers — Alle Lehrer/Admins (für Zuweisung)
+// ============================================================
+
+export async function handleAdminTeachers(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT id, first_name, last_name, email, role
+       FROM users
+       WHERE role IN ('teacher', 'admin') AND is_active = 1
+       ORDER BY last_name, first_name`
+    ).all();
+
+    return ok({ teachers: result.results ?? [] });
+  } catch (err) {
+    console.error("adminTeachers error:", err);
+    return serverError();
+  }
+}
+
+// ============================================================
 // GET /api/admin/school-years — Schuljahre
 // ============================================================
 
@@ -396,7 +678,6 @@ async function createSchoolYear(
 
   const id = uuid();
   try {
-    // Falls isActive=true → alle anderen deaktivieren
     if (body.isActive) {
       await env.DB.prepare("UPDATE school_years SET is_active = 0").run();
     }
