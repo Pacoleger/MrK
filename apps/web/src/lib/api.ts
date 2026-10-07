@@ -45,11 +45,16 @@ type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
   retries?: number;
+  /**
+   * Wenn true → 401 wird NICHT zum Redirect führen.
+   * Wird für Auth-Endpoints (/me, /login) genutzt,
+   * die einen 401 als "nicht eingeloggt" interpretieren sollen.
+   */
   skipAuthRedirect?: boolean;
 }
 
 // ============================================================
-// Auth-Redirect-Handler
+// Redirect-Handler mit Loop-Schutz
 // ============================================================
 
 let lastRedirectTime = 0;
@@ -57,34 +62,42 @@ let lastRedirectTime = 0;
 function redirectToLogin() {
   if (typeof window === "undefined") return;
 
-  // Nur auf Dashboard-Seiten redirecten
+  // Nur von Dashboard-Seiten redirecten
   if (!window.location.pathname.startsWith("/dashboard")) return;
 
   // Throttle: Max 1x pro 5 Sekunden
   const now = Date.now();
-  if (now - lastRedirectTime < 5000) return;
+  if (now - lastRedirectTime < 5000) {
+    console.log("[API] Redirect throttled");
+    return;
+  }
   lastRedirectTime = now;
 
-  // WICHTIG: Nur wenn wir sicher sind, dass Cookie fehlt
-  // Prüfen ob nach Login schon ein Redirect-Zähler existiert
-  const redirectCount = parseInt(
+  // Loop-Schutz: Nach 3 Redirects in einer Session → hart zu /login
+  const count = parseInt(
     sessionStorage.getItem("mrk_redirect_count") || "0",
     10
   );
 
-  if (redirectCount >= 2) {
-    // Zu viele Redirects → Login-Seite ohne redirect-Param
-    console.warn("[Auth] Redirect-Loop erkannt – Reset");
+  if (count >= 3) {
+    console.warn("[API] Redirect-Loop – Reset");
     sessionStorage.removeItem("mrk_redirect_count");
     window.location.href = "/login";
     return;
   }
 
-  sessionStorage.setItem("mrk_redirect_count", String(redirectCount + 1));
+  sessionStorage.setItem("mrk_redirect_count", String(count + 1));
 
   const currentPath = window.location.pathname + window.location.search;
   const redirect = encodeURIComponent(currentPath);
   window.location.href = `/login?redirect=${redirect}&reason=session_expired`;
+}
+
+// Reset Counter bei erfolgreichem Login
+export function resetRedirectCounter() {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("mrk_redirect_count");
+  }
 }
 
 // ============================================================
@@ -141,9 +154,16 @@ export async function apiFetch<T = unknown>(
 
       // Fehler-Antwort
       if (!json.success) {
-        // 401 → Session abgelaufen
-        if (response.status === 401 && !skipAuthRedirect) {
-          redirectToLogin();
+        // 401 → Redirect zu Login (nur wenn nicht skipAuthRedirect)
+        if (
+          response.status === 401 &&
+          !skipAuthRedirect &&
+          typeof window !== "undefined"
+        ) {
+          // Nur auf Dashboard-Seiten redirecten
+          if (window.location.pathname.startsWith("/dashboard")) {
+            redirectToLogin();
+          }
         }
 
         throw new ApiError(
