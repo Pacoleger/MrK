@@ -19,6 +19,7 @@ interface RegisterBody {
   lastName: string;
   role: "student" | "teacher";
   locale?: "de" | "en" | "fr";
+  classId?: string;   // ← NEU
 }
 
 export async function handleRegister(
@@ -70,6 +71,20 @@ export async function handleRegister(
     return fail("EMAIL_IN_USE", "Email is already registered", 409);
   }
 
+  // --- Klassen-Zuweisung prüfen (nur für Schüler) ---
+  let classId: string | null = null;
+  if (body.role === "student" && body.classId) {
+    const classExists = await env.DB.prepare(
+      "SELECT id FROM classes WHERE id = ?"
+    )
+      .bind(body.classId)
+      .first<{ id: string }>();
+
+    if (classExists) {
+      classId = body.classId;
+    }
+  }
+
   // --- Passwort hashen ---
   const salt = randomBase64(16);
   const passwordHash = await hashPassword(body.password, salt);
@@ -98,6 +113,22 @@ export async function handleRegister(
     return serverError("Failed to create user");
   }
 
+  // --- Klassen-Zuweisung (falls Schüler + Klasse gewählt) ---
+  if (classId) {
+    try {
+      await env.DB.prepare(
+        `INSERT INTO class_students (id, class_id, student_id)
+         VALUES (?, ?, ?)`
+      )
+        .bind(uuid(), classId, userId)
+        .run();
+      console.log(`[register] User ${userId} → Klasse ${classId}`);
+    } catch (err) {
+      console.error("Class assignment failed:", err);
+      // Nicht fatal – User ist trotzdem angelegt
+    }
+  }
+
   // --- User laden ---
   const user = await env.DB.prepare("SELECT * FROM users WHERE id = ?")
     .bind(userId)
@@ -117,7 +148,7 @@ export async function handleRegister(
   await logActivity(env, {
     userId: user.id,
     action: "login",
-    metadata: { method: "register" },
+    metadata: { method: "register", classId },
     request,
   });
 
@@ -132,6 +163,7 @@ export async function handleRegister(
       locale: user.locale,
     },
     token,
+    classAssigned: !!classId,
   });
 
   return withAuthCookie(response, token);
