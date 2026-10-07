@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   GraduationCap,
   Plus,
@@ -8,6 +9,7 @@ import {
   Loader2,
   Users,
   X,
+  Settings,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,12 @@ export default function AdminClassesPage() {
   }, [load]);
 
   const handleDelete = async (classId: string, name: string) => {
-    if (!confirm(`Klasse "${name}" wirklich löschen? Alle Zuordnungen werden entfernt.`)) return;
+    if (
+      !confirm(
+        `Klasse "${name}" wirklich löschen? Alle Zuordnungen werden entfernt.`
+      )
+    )
+      return;
     try {
       await adminApi.deleteClass(classId);
       await load();
@@ -64,7 +71,10 @@ export default function AdminClassesPage() {
             {classes.length} Klassen
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} disabled={schoolYears.length === 0}>
+        <Button
+          onClick={() => setShowCreate(true)}
+          disabled={schoolYears.length === 0}
+        >
           <Plus className="h-4 w-4" />
           Neue Klasse
         </Button>
@@ -86,7 +96,7 @@ export default function AdminClassesPage() {
         <div className="space-y-2">
           {classes.map((c) => (
             <Card key={c.id}>
-              <CardContent className="p-4 flex items-center gap-4">
+              <CardContent className="p-4 flex items-center gap-4 flex-wrap">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white font-bold shrink-0">
                   {c.name}
                 </div>
@@ -97,7 +107,7 @@ export default function AdminClassesPage() {
                       Klasse {c.grade_level}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {c.school_year_name ?? "—"}
                     {c.teacher_first && ` · ${c.teacher_first} ${c.teacher_last}`}
                   </p>
@@ -106,9 +116,16 @@ export default function AdminClassesPage() {
                   <Users className="h-4 w-4" />
                   {c.student_count}
                 </div>
+                <Link href={`/dashboard/admin/klassen/${c.id}`}>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Settings className="h-3.5 w-3.5" />
+                    Verwalten
+                  </Button>
+                </Link>
                 <button
                   onClick={() => handleDelete(c.id, c.name)}
                   className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600"
+                  title="Löschen"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -155,7 +172,11 @@ function CreateClassDialog({
     if (!name.trim()) return setError("Name ist erforderlich");
     setIsSubmitting(true);
     try {
-      await adminApi.createClass({ name: name.trim(), gradeLevel, schoolYearId });
+      await adminApi.createClass({
+        name: name.trim(),
+        gradeLevel,
+        schoolYearId,
+      });
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler");
@@ -169,7 +190,10 @@ function CreateClassDialog({
       <div className="w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold">Neue Klasse</h2>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-muted">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-muted"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
