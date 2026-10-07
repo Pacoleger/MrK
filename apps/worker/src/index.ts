@@ -1,7 +1,7 @@
 import type { Env } from "./types";
 import { ok, notFound, fail } from "./lib/response";
 import { handlePreflight, withCors } from "./lib/cors";
-
+import { handleClasses, handleClassRanking, handleClassStudents, handlePublicClasses } from "./routes/classes";
 // Bestehende Routen
 import { handleHealth } from "./routes/health";
 import { handleDbCheck } from "./routes/db-check";
