@@ -333,4 +333,83 @@ async function route(
       return handleAddStudentToClass(request, env, mAddStudent.id);
 
     const mRemoveStudent = matchPath(
-      "/api/admin/classes
+      "/api/admin/classes/:classId/students/:studentId",
+      path
+    );
+    if (mRemoveStudent)
+      return handleRemoveStudentFromClass(
+        request,
+        env,
+        mRemoveStudent.classId,
+        mRemoveStudent.studentId
+      );
+
+    const mHomeroom = matchPath("/api/admin/classes/:id/homeroom", path);
+    if (mHomeroom)
+      return handleSetHomeroomTeacher(request, env, mHomeroom.id);
+
+    const mDetail = matchPath("/api/admin/classes/:id", path);
+    if (mDetail) return handleAdminClassDetail(request, env, mDetail.id);
+  }
+
+  if (path === "/api/admin/teachers") return handleAdminTeachers(request, env);
+
+  if (path === "/api/admin/school-years")
+    return handleAdminSchoolYears(request, env);
+
+  // ============================================================
+  // Chat
+  // ============================================================
+  if (path === "/api/chat/conversations") {
+    if (method === "GET") return handleConversations(request, env);
+    if (method === "POST") return handleCreateConversation(request, env);
+  }
+
+  {
+    const mConv = matchPath(
+      "/api/chat/conversations/:id/messages",
+      path
+    );
+    if (mConv) {
+      if (method === "GET") return handleMessages(request, env, mConv.id);
+      if (method === "POST")
+        return handleSendMessage(request, env, mConv.id);
+    }
+  }
+
+  if (path === "/api/chat/users") return handleChatUsers(request, env);
+
+  // ============================================================
+  // 404
+  // ============================================================
+  return notFound(`Route ${method} ${path} not found`);
+}
+
+// ============================================================
+// Main Handler
+// ============================================================
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    if (method === "OPTIONS") return handlePreflight(request);
+
+    let response: Response;
+
+    try {
+      response = await route(request, env, path, method);
+    } catch (error) {
+      console.error("Unhandled error:", error);
+      response = fail(
+        "INTERNAL_ERROR",
+        error instanceof Error ? error.message : "Unknown error",
+        500
+      );
+    }
+
+    return withCors(request, response);
+  },
+} satisfies ExportedHandler<Env>;
