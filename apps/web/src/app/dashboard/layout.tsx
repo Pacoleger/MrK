@@ -21,7 +21,6 @@ import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { NotificationBell } from "@/components/notification-bell";
-import { MobileNav } from "@/components/mobile-nav";
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -76,8 +75,7 @@ export default function DashboardLayout({
             {navItems.map((item) => {
               const active =
                 pathname === item.href ||
-                (item.href !== "/dashboard" &&
-                  pathname.startsWith(item.href));
+                (item.href !== "/dashboard" && pathname.startsWith(item.href));
               const Icon = item.icon;
               return (
                 <Link
@@ -96,7 +94,6 @@ export default function DashboardLayout({
               );
             })}
 
-            {/* Admin-Nav */}
             {user?.role === "admin" && (
               <div className="pt-2 mt-2 border-t border-border">
                 <Link
@@ -134,11 +131,9 @@ export default function DashboardLayout({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-3 sm:px-6 gap-2 sm:gap-3 safe-top">
-            {/* Mobile: Hamburger + Logo */}
-            <div className="lg:hidden flex items-center gap-1">
-              <MobileNav />
-              <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold">
+          <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-4 sm:px-6 gap-3">
+            <div className="lg:hidden flex items-center gap-2 font-bold">
+              <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-sm">
                 MrK
               </span>
             </div>
