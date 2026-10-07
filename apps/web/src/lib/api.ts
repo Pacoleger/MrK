@@ -52,11 +52,35 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 // Auth-Redirect-Handler
 // ============================================================
 
+let lastRedirectTime = 0;
+
 function redirectToLogin() {
   if (typeof window === "undefined") return;
 
   // Nur auf Dashboard-Seiten redirecten
   if (!window.location.pathname.startsWith("/dashboard")) return;
+
+  // Throttle: Max 1x pro 5 Sekunden
+  const now = Date.now();
+  if (now - lastRedirectTime < 5000) return;
+  lastRedirectTime = now;
+
+  // WICHTIG: Nur wenn wir sicher sind, dass Cookie fehlt
+  // Prüfen ob nach Login schon ein Redirect-Zähler existiert
+  const redirectCount = parseInt(
+    sessionStorage.getItem("mrk_redirect_count") || "0",
+    10
+  );
+
+  if (redirectCount >= 2) {
+    // Zu viele Redirects → Login-Seite ohne redirect-Param
+    console.warn("[Auth] Redirect-Loop erkannt – Reset");
+    sessionStorage.removeItem("mrk_redirect_count");
+    window.location.href = "/login";
+    return;
+  }
+
+  sessionStorage.setItem("mrk_redirect_count", String(redirectCount + 1));
 
   const currentPath = window.location.pathname + window.location.search;
   const redirect = encodeURIComponent(currentPath);
