@@ -40,6 +40,37 @@ export interface AdminClass {
   created_at: string;
 }
 
+export interface ClassStudent {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  enrolled_at?: string;
+}
+
+export interface ClassSubject {
+  id: string;
+  subject_id: string;
+  subject_name: string;
+  teacher_id: string | null;
+  teacher_first: string | null;
+  teacher_last: string | null;
+}
+
+export interface ClassDetail {
+  class: AdminClass;
+  students: ClassStudent[];
+  subjects: ClassSubject[];
+}
+
+export interface Teacher {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+}
+
 export interface SchoolYear {
   id: string;
   name: string;
@@ -92,10 +123,45 @@ export const adminApi = {
     return apiPost<{ id: string; message: string }>("/api/admin/classes", data);
   },
 
+  classDetail(classId: string) {
+    return apiGet<ClassDetail>(`/api/admin/classes/${classId}`);
+  },
+
   deleteClass(classId: string) {
     return apiFetch<{ message: string }>(`/api/admin/classes/${classId}`, {
       method: "DELETE",
     });
+  },
+
+  availableStudents(classId: string) {
+    return apiGet<{ students: ClassStudent[] }>(
+      `/api/admin/classes/${classId}/available-students`
+    );
+  },
+
+  addStudentToClass(classId: string, studentId: string) {
+    return apiPost<{ message: string }>(
+      `/api/admin/classes/${classId}/students`,
+      { studentId }
+    );
+  },
+
+  removeStudentFromClass(classId: string, studentId: string) {
+    return apiFetch<{ message: string }>(
+      `/api/admin/classes/${classId}/students/${studentId}`,
+      { method: "DELETE" }
+    );
+  },
+
+  setHomeroomTeacher(classId: string, teacherId: string | null) {
+    return apiPost<{ message: string }>(
+      `/api/admin/classes/${classId}/homeroom`,
+      { teacherId }
+    );
+  },
+
+  teachers() {
+    return apiGet<{ teachers: Teacher[] }>("/api/admin/teachers");
   },
 
   schoolYears() {
