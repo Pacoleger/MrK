@@ -1,7 +1,7 @@
 import type { Env } from "./types";
 import { ok, notFound, fail } from "./lib/response";
 import { handlePreflight, withCors } from "./lib/cors";
-import { handleClasses, handleClassRanking, handleClassStudents, handlePublicClasses } from "./routes/classes";
+
 // Bestehende Routen
 import { handleHealth } from "./routes/health";
 import { handleDbCheck } from "./routes/db-check";
@@ -44,6 +44,12 @@ import {
   handleAdminUpdateUser,
   handleAdminClasses,
   handleAdminDeleteClass,
+  handleAdminClassDetail,
+  handleAvailableStudents,
+  handleAddStudentToClass,
+  handleRemoveStudentFromClass,
+  handleSetHomeroomTeacher,
+  handleAdminTeachers,
   handleAdminSchoolYears,
 } from "./routes/admin";
 
@@ -107,7 +113,7 @@ async function route(
   if (path === "/" || path === "/api") {
     return ok({
       name: "MrK API",
-      version: "0.6.0",
+      version: "0.7.0",
       environment: env.ENVIRONMENT,
       endpoints: [
         "GET    /api/health",
@@ -144,6 +150,7 @@ async function route(
         "POST   /api/notifications/read-all",
         // Stats & Classes
         "GET    /api/stats/me",
+        "GET    /api/classes/public",
         "GET    /api/classes",
         "GET    /api/classes/:id/ranking",
         "GET    /api/classes/:id/students",
@@ -153,7 +160,13 @@ async function route(
         "PATCH  /api/admin/users/:id",
         "GET    /api/admin/classes",
         "POST   /api/admin/classes",
+        "GET    /api/admin/classes/:id",
         "DELETE /api/admin/classes/:id",
+        "GET    /api/admin/classes/:id/available-students",
+        "POST   /api/admin/classes/:id/students",
+        "DELETE /api/admin/classes/:classId/students/:studentId",
+        "POST   /api/admin/classes/:id/homeroom",
+        "GET    /api/admin/teachers",
         "GET    /api/admin/school-years",
         "POST   /api/admin/school-years",
         // Chat
@@ -277,7 +290,7 @@ async function route(
   // ============================================================
   if (path === "/api/stats/me") return handleMyStats(request, env);
 
-    // ============================================================
+  // ============================================================
   // Classes
   // ============================================================
   if (path === "/api/classes/public")
@@ -305,68 +318,19 @@ async function route(
   }
 
   if (path === "/api/admin/classes") return handleAdminClasses(request, env);
+
+  // Class-spezifische Routen (vor /api/admin/classes/:id)
   {
-    const m = matchPath("/api/admin/classes/:id", path);
-    if (m) return handleAdminDeleteClass(request, env, m.id);
-  }
-
-  if (path === "/api/admin/school-years")
-    return handleAdminSchoolYears(request, env);
-
-  // ============================================================
-  // Chat
-  // ============================================================
-  if (path === "/api/chat/conversations") {
-    if (method === "GET") return handleConversations(request, env);
-    if (method === "POST") return handleCreateConversation(request, env);
-  }
-
-  {
-    const mConv = matchPath(
-      "/api/chat/conversations/:id/messages",
+    const mAvail = matchPath(
+      "/api/admin/classes/:id/available-students",
       path
     );
-    if (mConv) {
-      if (method === "GET") return handleMessages(request, env, mConv.id);
-      if (method === "POST")
-        return handleSendMessage(request, env, mConv.id);
-    }
-  }
+    if (mAvail)
+      return handleAvailableStudents(request, env, mAvail.id);
 
-  if (path === "/api/chat/users") return handleChatUsers(request, env);
+    const mAddStudent = matchPath("/api/admin/classes/:id/students", path);
+    if (mAddStudent)
+      return handleAddStudentToClass(request, env, mAddStudent.id);
 
-  // ============================================================
-  // 404
-  // ============================================================
-  return notFound(`Route ${method} ${path} not found`);
-}
-
-// ============================================================
-// Main Handler
-// ============================================================
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
-
-    // CORS Preflight
-    if (method === "OPTIONS") return handlePreflight(request);
-
-    let response: Response;
-
-    try {
-      response = await route(request, env, path, method);
-    } catch (error) {
-      console.error("Unhandled error:", error);
-      response = fail(
-        "INTERNAL_ERROR",
-        error instanceof Error ? error.message : "Unknown error",
-        500
-      );
-    }
-
-    return withCors(request, response);
-  },
-} satisfies ExportedHandler<Env>;
+    const mRemoveStudent = matchPath(
+      "/api/admin/classes
