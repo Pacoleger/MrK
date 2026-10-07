@@ -7,12 +7,18 @@ import { Eye, EyeOff, Loader2, UserPlus, GraduationCap, BookOpen } from "lucide-
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
+import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/lib/types";
+
+interface ClassOption {
+  id: string;
+  name: string;
+  grade_level: number;
+}
 
 const roleOptions: { value: "student" | "teacher"; icon: typeof GraduationCap }[] = [
   { value: "student", icon: GraduationCap },
@@ -34,6 +40,30 @@ export function RegisterForm() {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [role, setRole] = React.useState<"student" | "teacher">("student");
+  const [classId, setClassId] = React.useState<string>("");
+  const [classes, setClasses] = React.useState<ClassOption[]>([]);
+  const [loadingClasses, setLoadingClasses] = React.useState(false);
+
+  // Lade Klassen für Dropdown
+  React.useEffect(() => {
+    if (role !== "student") {
+      setClassId("");
+      return;
+    }
+
+    setLoadingClasses(true);
+    apiGet<{ classes: ClassOption[] }>("/api/classes/public")
+      .then((data) => {
+        setClasses(data.classes);
+        if (data.classes.length > 0) {
+          setClassId(data.classes[0].id);
+        }
+      })
+      .catch((err) => {
+        console.error("Klassen laden fehlgeschlagen:", err);
+      })
+      .finally(() => setLoadingClasses(false));
+  }, [role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +80,14 @@ export function RegisterForm() {
     setIsSubmitting(true);
 
     try {
-      await register({ email, password, firstName, lastName, role });
+      await register({
+        email,
+        password,
+        firstName,
+        lastName,
+        role,
+        classId: role === "student" && classId ? classId : undefined,
+      });
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -122,6 +159,7 @@ export function RegisterForm() {
         />
       </div>
 
+      {/* Rolle */}
       <div className="space-y-2">
         <Label>{t.register.roleHint}</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -147,6 +185,37 @@ export function RegisterForm() {
           })}
         </div>
       </div>
+
+      {/* Klassen-Auswahl (nur für Schüler) */}
+      {role === "student" && (
+        <div className="space-y-2">
+          <Label htmlFor="classId">Klasse</Label>
+          {loadingClasses ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Lade Klassen...
+            </div>
+          ) : (
+            <select
+              id="classId"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              disabled={isSubmitting}
+              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50"
+            >
+              <option value="">Keine Klasse (später zuweisen)</option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} (Klasse {c.grade_level})
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Wähle deine Klasse, damit du direkt Aufgaben erhältst.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="password">{t.common.password}</Label>
