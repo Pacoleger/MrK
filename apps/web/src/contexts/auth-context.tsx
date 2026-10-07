@@ -44,16 +44,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     let mounted = true;
-    (async () => {
+
+    const checkAuth = async (attempt = 0): Promise<void> => {
       try {
         const u = await authApi.me();
-        if (mounted) setUser(u);
-      } catch {
-        if (mounted) setUser(null);
-      } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted) {
+          setUser(u);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        // Falls 401 → 1x Retry nach kurzem Delay (iOS Cookie-Timing)
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 300));
+          return checkAuth(attempt + 1);
+        }
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-    })();
+    };
+
+    checkAuth();
+
     return () => {
       mounted = false;
     };
