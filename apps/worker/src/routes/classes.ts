@@ -51,6 +51,33 @@ export async function handleClasses(
 }
 
 // ============================================================
+// GET /api/classes/public — Öffentliche Klassen-Liste
+// Für die Registrierung (ohne Auth)
+// ============================================================
+
+export async function handlePublicClasses(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT c.id, c.name, c.grade_level
+       FROM classes c
+       JOIN school_years sy ON sy.id = c.school_year_id
+       WHERE sy.is_active = 1
+       ORDER BY c.grade_level, c.name`
+    ).all();
+
+    return ok({ classes: result.results ?? [] });
+  } catch (err) {
+    console.error("publicClasses error:", err);
+    return serverError();
+  }
+}
+
+// ============================================================
 // GET /api/classes/:id/ranking — Klassen-Rangliste
 // ============================================================
 
@@ -123,32 +150,6 @@ export async function handleClassStudents(
     return ok({ students: result.results ?? [] });
   } catch (err) {
     console.error("classStudents error:", err);
-    return serverError();
-  }
-}
-// ============================================================
-// GET /api/classes/public — Öffentliche Klassen-Liste
-// Für die Registrierung (ohne Auth)
-// ============================================================
-
-export async function handlePublicClasses(
-  request: Request,
-  env: Env
-): Promise<Response> {
-  if (request.method !== "GET") return methodNotAllowed(["GET"]);
-
-  try {
-    const result = await env.DB.prepare(
-      `SELECT c.id, c.name, c.grade_level
-       FROM classes c
-       JOIN school_years sy ON sy.id = c.school_year_id
-       WHERE sy.is_active = 1
-       ORDER BY c.grade_level, c.name`
-    ).all();
-
-    return ok({ classes: result.results ?? [] });
-  } catch (err) {
-    console.error("publicClasses error:", err);
     return serverError();
   }
 }
