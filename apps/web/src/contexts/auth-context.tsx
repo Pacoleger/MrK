@@ -21,18 +21,55 @@ interface AuthContextValue {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
+// ============================================================
+// Retry-Helper für iOS-Cookie-Timing
+// ============================================================
+
+async function fetchMeWithRetry(
+  maxAttempts = 3
+): Promise<User> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const user = await authApi.me();
+      if (attempt > 0) {
+        console.log(`[Auth] Erfolgreich nach ${attempt} Retry(s)`);
+      }
+      return user;
+    } catch (err) {
+      lastError = err;
+
+      // Nur bei 401 retryen (Cookie-Timing-Problem)
+      if (err instanceof ApiError && err.code === "UNAUTHORIZED") {
+        // Exponentielles Backoff: 300ms, 600ms, 1200ms
+        const delay = 300 * Math.pow(2, attempt);
+        console.log(`[Auth] 401 - Retry in ${delay}ms (Versuch ${attempt + 1}/${maxAttempts})`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      // Andere Fehler sofort werfen
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
 
   /**
-   * Session beim App-Start laden.
+   * Session beim App-Start laden (mit Retry).
    */
   const refresh = React.useCallback(async () => {
     try {
-      const u = await authApi.me();
+      const u = await fetchMeWithRetry();
       setUser(u);
     } catch (err) {
+      // Nach allen Retries: Nutzer ist nicht eingeloggt
       if (err instanceof ApiError && err.code === "UNAUTHORIZED") {
         setUser(null);
       } else {
@@ -44,29 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     let mounted = true;
-
-    const checkAuth = async (attempt = 0): Promise<void> => {
+    (async () => {
       try {
-        const u = await authApi.me();
-        if (mounted) {
-          setUser(u);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        // Falls 401 → 1x Retry nach kurzem Delay (iOS Cookie-Timing)
-        if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, 300));
-          return checkAuth(attempt + 1);
-        }
-        if (mounted) {
-          setUser(null);
-          setIsLoading(false);
-        }
+        const u = await fetchMeWithRetry();
+        if (mounted) setUser(u);
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    };
-
-    checkAuth();
-
+    })();
     return () => {
       mounted = false;
     };
@@ -75,12 +99,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = React.useCallback(async (credentials: LoginCredentials) => {
     const result = await authApi.login(credentials);
     setUser(result.user);
+
+    // 🎯 Wichtig für iOS: Nach Login kurz warten, dann `me` prüfen
+    // (damit ist das Cookie sicher im Browser)
+    await new Promise((r) => setTimeout(r, 200));
+
     return result.user;
   }, []);
 
   const register = React.useCallback(async (data: RegisterData) => {
     const result = await authApi.register(data);
     setUser(result.user);
+    await new Promise((r) => setTimeout(r, 200));
     return result.user;
   }, []);
 
