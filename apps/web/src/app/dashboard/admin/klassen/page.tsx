@@ -116,8 +116,8 @@ export default function AdminClassesPage() {
                   <Users className="h-4 w-4" />
                   {c.student_count}
                 </div>
-                <Link href={`/dashboard/admin/klassen/${c.id}`}>
-                  <Button variant="outline" size="sm" className="gap-1">
+                  <Link href={`/dashboard/admin/klassen/detail?id=${c.id}`}>
+                    <Button variant="outline" size="sm" className="gap-1">
                     <Settings className="h-3.5 w-3.5" />
                     Verwalten
                   </Button>
