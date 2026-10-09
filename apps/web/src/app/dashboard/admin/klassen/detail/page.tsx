@@ -27,6 +27,21 @@ import {
   type Teacher,
 } from "@/lib/admin-api";
 
+import { Sigma, Atom, FlaskConical, Leaf } from "lucide-react";
+
+const SUBJECT_META = {
+  math: { label: "Mathematik", icon: Sigma, color: "from-brand-500 to-brand-700" },
+  physics: { label: "Physik", icon: Atom, color: "from-accent-500 to-accent-700" },
+  chemistry: { label: "Chemie", icon: FlaskConical, color: "from-brand-600 to-accent-600" },
+  biology: { label: "Biologie", icon: Leaf, color: "from-accent-400 to-brand-500" },
+} as const;
+
+const SUBJECT_IDS = ["math", "physics", "chemistry", "biology"] as const;
+
+type SubjectId = keyof typeof SUBJECT_META;
+
+
+
 function ClassDetailInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
