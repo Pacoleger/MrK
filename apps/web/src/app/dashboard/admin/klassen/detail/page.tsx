@@ -95,7 +95,23 @@ function ClassDetailInner() {
       alert(err instanceof Error ? err.message : "Fehler");
     }
   };
+  const handleAssignTeacher = async (
+    subjectId: SubjectId,
+    teacherId: string
+  ) => {
+    if (!classId) return;
 
+    try {
+      if (teacherId) {
+        await adminApi.addClassSubject(classId, subjectId, teacherId);
+      } else {
+        await adminApi.removeClassSubject(classId, subjectId);
+      }
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Fehler");
+    }
+  };
   if (isLoading) {
     return (
       <div className="grid place-items-center py-20">
