@@ -71,6 +71,15 @@ export interface Teacher {
   role: string;
 }
 
+export interface Subject {
+  id: string;
+  name_de: string;
+  name_en: string;
+  name_fr: string;
+  icon: string | null;
+  color: string | null;
+}
+
 export interface SchoolYear {
   id: string;
   name: string;
@@ -160,8 +169,30 @@ export const adminApi = {
     );
   },
 
+  // ============================================================
+  // Subject Assignment (NEU)
+  // ============================================================
+
+  addClassSubject(classId: string, subjectId: string, teacherId: string) {
+    return apiPost<{ message: string }>(
+      `/api/admin/classes/${classId}/subjects`,
+      { subjectId, teacherId }
+    );
+  },
+
+  removeClassSubject(classId: string, subjectId: string) {
+    return apiFetch<{ message: string }>(
+      `/api/admin/classes/${classId}/subjects/${subjectId}`,
+      { method: "DELETE" }
+    );
+  },
+
   teachers() {
     return apiGet<{ teachers: Teacher[] }>("/api/admin/teachers");
+  },
+
+  subjects() {
+    return apiGet<{ subjects: Subject[] }>("/api/admin/subjects");
   },
 
   schoolYears() {
