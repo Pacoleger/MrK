@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/provider";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ToastProvider } from "@/components/ui/toast";
+import { IdleManager } from "@/components/idle-manager";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -30,7 +31,10 @@ export default function RootLayout({
         >
           <I18nProvider>
             <AuthProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <ToastProvider>
+                {children}
+                <IdleManager />
+              </ToastProvider>
             </AuthProvider>
           </I18nProvider>
         </ThemeProvider>
