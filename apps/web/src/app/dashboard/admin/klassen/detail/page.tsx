@@ -234,7 +234,7 @@ function ClassDetailInner() {
         </CardContent>
       </Card>
 
-      {/* Fächer */}
+           {/* Fächer mit Lehrer-Zuweisung */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -243,27 +243,44 @@ function ClassDetailInner() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {subjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Keine Fächer zugewiesen.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {subjects.map((subj) => (
+          <div className="space-y-2">
+            {SUBJECT_IDS.map((subjectId) => {
+              const assignment = subjects.find(
+                (s) => s.subject_id === subjectId
+              );
+              const subjectMeta = SUBJECT_META[subjectId];
+
+              return (
                 <div
-                  key={subj.id}
-                  className="p-3 rounded-lg border border-border"
+                  key={subjectId}
+                  className="p-3 rounded-lg border border-border flex items-center gap-3"
                 >
-                  <p className="font-medium text-sm">{subj.subject_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {subj.teacher_first
-                      ? `${subj.teacher_first} ${subj.teacher_last}`
-                      : "Kein Lehrer"}
-                  </p>
+                  <div
+                    className={`w-10 h-10 rounded-lg bg-gradient-to-br ${subjectMeta.color} grid place-items-center text-white shrink-0`}
+                  >
+                    <subjectMeta.icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{subjectMeta.label}</p>
+                  </div>
+                  <select
+                    value={assignment?.teacher_id ?? ""}
+                    onChange={(e) =>
+                      handleAssignTeacher(subjectId, e.target.value)
+                    }
+                    className="h-9 rounded-lg border border-border bg-card px-3 text-sm min-w-[200px]"
+                  >
+                    <option value="">Kein Lehrer</option>
+                    {teachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.first_name} {t.last_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
