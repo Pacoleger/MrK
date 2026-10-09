@@ -3,7 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, UserPlus, GraduationCap, BookOpen } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  UserPlus,
+  GraduationCap,
+  BookOpen,
+  Sigma,
+  Atom,
+  FlaskConical,
+  Leaf,
+  Check,
+} from "lucide-react";
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
@@ -19,6 +31,13 @@ interface ClassOption {
   name: string;
   grade_level: number;
 }
+
+const SUBJECT_OPTIONS = [
+  { id: "math", label: "Mathematik", icon: Sigma },
+  { id: "physics", label: "Physik", icon: Atom },
+  { id: "chemistry", label: "Chemie", icon: FlaskConical },
+  { id: "biology", label: "Biologie", icon: Leaf },
+];
 
 const roleOptions: { value: "student" | "teacher"; icon: typeof GraduationCap }[] = [
   { value: "student", icon: GraduationCap },
@@ -43,8 +62,9 @@ export function RegisterForm() {
   const [classId, setClassId] = React.useState<string>("");
   const [classes, setClasses] = React.useState<ClassOption[]>([]);
   const [loadingClasses, setLoadingClasses] = React.useState(false);
+  const [selectedSubjects, setSelectedSubjects] = React.useState<string[]>([]);
 
-  // Lade Klassen für Dropdown
+  // Lade Klassen für Dropdown (nur bei Schüler)
   React.useEffect(() => {
     if (role !== "student") {
       setClassId("");
@@ -59,11 +79,17 @@ export function RegisterForm() {
           setClassId(data.classes[0].id);
         }
       })
-      .catch((err) => {
-        console.error("Klassen laden fehlgeschlagen:", err);
-      })
+      .catch((err) => console.error("Klassen laden fehlgeschlagen:", err))
       .finally(() => setLoadingClasses(false));
   }, [role]);
+
+  const toggleSubject = (subjectId: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(subjectId)
+        ? prev.filter((s) => s !== subjectId)
+        : [...prev, subjectId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +101,12 @@ export function RegisterForm() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError(t.validation.emailInvalid);
     if (!password) return setError(t.validation.passwordRequired);
     if (password.length < 8) return setError(t.validation.passwordTooShort);
-    if (password !== confirmPassword) return setError(t.validation.passwordMismatch);
+    if (password !== confirmPassword)
+      return setError(t.validation.passwordMismatch);
+
+    if (role === "teacher" && selectedSubjects.length === 0) {
+      return setError("Bitte wähle mindestens ein Fach aus");
+    }
 
     setIsSubmitting(true);
 
@@ -87,6 +118,7 @@ export function RegisterForm() {
         lastName,
         role,
         classId: role === "student" && classId ? classId : undefined,
+        subjectIds: role === "teacher" ? selectedSubjects : undefined,
       });
       router.push("/dashboard");
     } catch (err) {
@@ -186,7 +218,7 @@ export function RegisterForm() {
         </div>
       </div>
 
-      {/* Klassen-Auswahl (nur für Schüler) */}
+      {/* Schüler: Klassen-Auswahl */}
       {role === "student" && (
         <div className="space-y-2">
           <Label htmlFor="classId">Klasse</Label>
@@ -217,6 +249,39 @@ export function RegisterForm() {
         </div>
       )}
 
+      {/* Lehrer: Fächer-Auswahl */}
+      {role === "teacher" && (
+        <div className="space-y-2">
+          <Label>Welche Fächer unterrichtest du?</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {SUBJECT_OPTIONS.map(({ id, label, icon: Icon }) => {
+              const active = selectedSubjects.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => toggleSubject(id)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition",
+                    active
+                      ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
+                      : "border-border hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1 text-left">{label}</span>
+                  {active && <Check className="h-4 w-4" />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Der Administrator weist dich später konkreten Klassen zu.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="password">{t.common.password}</Label>
         <div className="relative">
@@ -233,14 +298,22 @@ export function RegisterForm() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? t.auth.hidePassword : t.auth.showPassword}
+            aria-label={
+              showPassword ? t.auth.hidePassword : t.auth.showPassword
+            }
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
             tabIndex={-1}
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
           </button>
         </div>
-        <p className="text-xs text-muted-foreground">{t.register.passwordHint}</p>
+        <p className="text-xs text-muted-foreground">
+          {t.register.passwordHint}
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -256,7 +329,12 @@ export function RegisterForm() {
         />
       </div>
 
-      <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isSubmitting}
+        className="w-full"
+      >
         {isSubmitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -276,7 +354,10 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         {t.register.hasAccount}{" "}
-        <Link href="/login" className="font-medium text-brand-600 hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-brand-600 hover:underline"
+        >
           {t.register.loginLink}
         </Link>
       </p>
