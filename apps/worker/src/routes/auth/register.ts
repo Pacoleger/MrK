@@ -19,7 +19,8 @@ interface RegisterBody {
   lastName: string;
   role: "student" | "teacher";
   locale?: "de" | "en" | "fr";
-  classId?: string;   // ← NEU
+  classId?: string;       // Schüler: welche Klasse
+  subjectIds?: string[];  // Lehrer: welche Fächer
 }
 
 export async function handleRegister(
@@ -85,6 +86,20 @@ export async function handleRegister(
     }
   }
 
+  // --- Fächer-Validierung (nur für Lehrer) ---
+  let validSubjects: string[] = [];
+  if (body.role === "teacher" && body.subjectIds && body.subjectIds.length > 0) {
+    // Prüfe, dass alle Fächer existieren
+    const placeholders = body.subjectIds.map(() => "?").join(",");
+    const found = await env.DB.prepare(
+      `SELECT id FROM subjects WHERE id IN (${placeholders})`
+    )
+      .bind(...body.subjectIds)
+      .all<{ id: string }>();
+
+    validSubjects = (found.results ?? []).map((r) => r.id);
+  }
+
   // --- Passwort hashen ---
   const salt = randomBase64(16);
   const passwordHash = await hashPassword(body.password, salt);
@@ -125,7 +140,6 @@ export async function handleRegister(
       console.log(`[register] User ${userId} → Klasse ${classId}`);
     } catch (err) {
       console.error("Class assignment failed:", err);
-      // Nicht fatal – User ist trotzdem angelegt
     }
   }
 
@@ -148,7 +162,11 @@ export async function handleRegister(
   await logActivity(env, {
     userId: user.id,
     action: "login",
-    metadata: { method: "register", classId },
+    metadata: {
+      method: "register",
+      classId: classId ?? undefined,
+      subjects: validSubjects.length > 0 ? validSubjects : undefined,
+    },
     request,
   });
 
@@ -164,6 +182,7 @@ export async function handleRegister(
     },
     token,
     classAssigned: !!classId,
+    subjects: validSubjects,
   });
 
   return withAuthCookie(response, token);
