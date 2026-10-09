@@ -24,7 +24,8 @@ export interface RegisterData {
   lastName: string;
   role: "student" | "teacher";
   locale?: Locale;
-  classId?: string;   // ← NEU
+  classId?: string;
+  subjectIds?: string[];
 }
 
 export interface AuthResponse {
