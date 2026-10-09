@@ -50,6 +50,9 @@ import {
   handleRemoveStudentFromClass,
   handleSetHomeroomTeacher,
   handleAdminTeachers,
+  handleAdminSubjects,
+  handleAddClassSubject,
+  handleRemoveClassSubject,
   handleAdminSchoolYears,
 } from "./routes/admin";
 
@@ -319,7 +322,7 @@ async function route(
 
   if (path === "/api/admin/classes") return handleAdminClasses(request, env);
 
-  // Class-spezifische Routen (vor /api/admin/classes/:id)
+  // Class-spezifische Routen
   {
     const mAvail = matchPath(
       "/api/admin/classes/:id/available-students",
@@ -348,11 +351,32 @@ async function route(
     if (mHomeroom)
       return handleSetHomeroomTeacher(request, env, mHomeroom.id);
 
+    // Subject Routes
+    const mAddSubject = matchPath(
+      "/api/admin/classes/:classId/subjects",
+      path
+    );
+    if (mAddSubject && method === "POST")
+      return handleAddClassSubject(request, env, mAddSubject.classId);
+
+    const mRemoveSubject = matchPath(
+      "/api/admin/classes/:classId/subjects/:subjectId",
+      path
+    );
+    if (mRemoveSubject && method === "DELETE")
+      return handleRemoveClassSubject(
+        request,
+        env,
+        mRemoveSubject.classId,
+        mRemoveSubject.subjectId
+      );
+
     const mDetail = matchPath("/api/admin/classes/:id", path);
     if (mDetail) return handleAdminClassDetail(request, env, mDetail.id);
   }
 
   if (path === "/api/admin/teachers") return handleAdminTeachers(request, env);
+  if (path === "/api/admin/subjects") return handleAdminSubjects(request, env);
 
   if (path === "/api/admin/school-years")
     return handleAdminSchoolYears(request, env);
