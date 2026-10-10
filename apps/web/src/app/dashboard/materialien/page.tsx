@@ -17,7 +17,7 @@ import { materialsApi, type Material, type SubjectOption } from "@/lib/materials
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
+import { MaterialViewer } from "@/components/materials/material-viewer";
 export default function MaterialienPage() {
   const { user } = useAuth();
   const toast = useToast();
