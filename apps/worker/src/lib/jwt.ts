@@ -6,7 +6,12 @@ import { base64UrlEncode, base64UrlDecode, textEncode, textDecode } from "./cryp
 // ============================================================
 
 const ALG = "HS256";
-const DEFAULT_EXPIRY_SEC = 60 * 60 * 24 * 7; // 7 Tage
+
+/**
+ * Session läuft 8 Stunden (ein Schultag).
+ * Nach Ablauf muss der Nutzer sich neu einloggen.
+ */
+const DEFAULT_EXPIRY_SEC = 60 * 60 * 8; // 8 Stunden
 
 function importKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
