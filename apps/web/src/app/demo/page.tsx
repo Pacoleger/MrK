@@ -1,10 +1,12 @@
 "use client";
 
+import * as React from "react";
+import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useT } from "@/i18n/use-translation";
 
-export default function DemoPage() {
+function DemoContent() {
   const t = useT();
 
   return (
@@ -12,7 +14,7 @@ export default function DemoPage() {
       <div className="text-center space-y-4">
         <h1 className="text-3xl font-bold">Demo</h1>
         <p className="text-muted-foreground">
-          Interaktive Demo folgt nach Schritt 4 (API + Auth).
+          Interaktive Demo folgt in Kürze.
         </p>
         <Link
           href="/"
@@ -23,5 +25,19 @@ export default function DemoPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function DemoPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <DemoContent />
+    </Suspense>
   );
 }
