@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { UserMenu } from "@/components/user-menu";
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
+import Image from "next/image";
 
 const subjects = [
   { key: "math",      icon: Sigma,        color: "from-brand-500 to-brand-700" },
@@ -24,9 +25,14 @@ export default function HomePage() {
       <header className="border-b border-border/60 backdrop-blur sticky top-0 z-40 bg-background/70">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white">
-              MrK
-            </span>
+            <Image
+              src="/mrk-logo.png"
+              alt="MrK Logo"
+              width={40}
+              height={40}
+              className="w-10 h-10 object-contain"
+              priority
+            />
             <span>Lernplattform</span>
           </Link>
           <nav className="flex items-center gap-2">
