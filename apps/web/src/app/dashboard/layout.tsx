@@ -64,9 +64,14 @@ export default function DashboardLayout({
         <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card">
           <div className="p-4 border-b border-border">
             <Link href="/" className="flex items-center gap-2 font-bold">
-              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white">
-                MrK
-              </span>
+              <Image
+                src="/mrk-logo.png"
+                alt="MrK Logo"
+                width={36}
+                height={36}
+                className="w-9 h-9 object-contain"
+                priority
+              />
               <span>Lernplattform</span>
             </Link>
           </div>
