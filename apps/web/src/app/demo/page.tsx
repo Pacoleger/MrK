@@ -1,12 +1,10 @@
 "use client";
 
-import * as React from "react";
-import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useT } from "@/i18n/use-translation";
 
-function DemoContent() {
+export default function DemoPage() {
   const t = useT();
 
   return (
@@ -25,19 +23,5 @@ function DemoContent() {
         </Link>
       </div>
     </div>
-  );
-}
-
-export default function DemoPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen grid place-items-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      }
-    >
-      <DemoContent />
-    </Suspense>
   );
 }
