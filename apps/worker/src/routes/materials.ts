@@ -13,32 +13,6 @@ import { validateFile, makeFileKey } from "../lib/file-utils";
 import { createNotification } from "../lib/gamification";
 
 // ============================================================
-// Types
-// ============================================================
-
-interface MaterialRow {
-  id: string;
-  teacher_id: string;
-  subject_id: string;
-  title: string;
-  description: string | null;
-  type: "file" | "link" | "html";
-  file_key: string | null;
-  file_name: string | null;
-  file_type: string | null;
-  file_size: number | null;
-  url: string | null;
-  content: string | null;
-  created_at: string;
-  updated_at: string;
-  subject_name?: string;
-  teacher_first?: string;
-  teacher_last?: string;
-  class_count?: number;
-  student_count?: number;
-}
-
-// ============================================================
 // GET /api/materials — Liste (rollenbasiert)
 // ============================================================
 
@@ -64,7 +38,6 @@ async function listMaterials(
 
   try {
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      // Lehrer: eigene Materialien
       const query = `
         SELECT m.*, s.name_de AS subject_name,
                u.first_name AS teacher_first, u.last_name AS teacher_last,
@@ -84,7 +57,6 @@ async function listMaterials(
       return ok({ materials: result.results ?? [] });
     }
 
-    // Schüler: freigeschaltete Materialien
     const query = `
       SELECT DISTINCT m.*, s.name_de AS subject_name,
              u.first_name AS teacher_first, u.last_name AS teacher_last
@@ -117,7 +89,7 @@ async function listMaterials(
 }
 
 // ============================================================
-// POST /api/materials — Material erstellen (multipart/form-data)
+// POST /api/materials/create — Material erstellen (multipart/form-data)
 // ============================================================
 
 export async function handleCreateMaterial(
@@ -139,7 +111,7 @@ export async function handleCreateMaterial(
     return fail("INVALID_FORM", "Erwartet multipart/form-data", 400);
   }
 
-  const type = formData.get("type") as "file" | "link" | null;
+  const type = formData.get("type") as "file" | "link" | "html" | null;
   const title = (formData.get("title") as string | null)?.trim();
   const description = (formData.get("description") as string | null)?.trim();
   const subjectId = (formData.get("subjectId") as string | null)?.trim();
@@ -161,7 +133,6 @@ export async function handleCreateMaterial(
     return fail("CONTENT_REQUIRED", "Inhalt ist erforderlich", 400);
   }
 
-  // Prüfe Fach
   const subject = await env.DB.prepare("SELECT id FROM subjects WHERE id = ?")
     .bind(subjectId)
     .first<{ id: string }>();
@@ -173,8 +144,8 @@ export async function handleCreateMaterial(
   let fileType: string | null = null;
   let fileSize: number | null = null;
   let linkUrl: string | null = null;
+  let htmlContent: string | null = null;
 
-  // Datei hochladen (falls type=file)
   if (type === "file" && file) {
     if (!env.STORAGE) {
       return serverError("Storage nicht konfiguriert");
@@ -206,9 +177,10 @@ export async function handleCreateMaterial(
     fileSize = file.size;
   } else if (type === "link") {
     linkUrl = url!;
+  } else if (type === "html") {
+    htmlContent = content!;
   }
 
-  // Material anlegen
   try {
     await env.DB.prepare(
       `INSERT INTO materials
@@ -228,7 +200,7 @@ export async function handleCreateMaterial(
         fileType,
         fileSize,
         linkUrl,
-        type === "html" ? content : null
+        htmlContent
       )
       .run();
   } catch (err) {
@@ -262,7 +234,6 @@ export async function handleDeleteMaterial(
 
   if (request.method !== "DELETE") return methodNotAllowed(["DELETE"]);
 
-  // Material laden
   const material = await env.DB.prepare(
     "SELECT id, teacher_id, file_key FROM materials WHERE id = ?"
   )
@@ -271,15 +242,10 @@ export async function handleDeleteMaterial(
 
   if (!material) return notFound("Material nicht gefunden");
 
-  // Nur eigener Ersteller oder Admin
-  if (
-    ctx.user.role !== "admin" &&
-    material.teacher_id !== ctx.user.id
-  ) {
+  if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
 
-  // R2-Datei löschen
   if (material.file_key && env.STORAGE) {
     try {
       await env.STORAGE.delete(material.file_key);
@@ -288,7 +254,6 @@ export async function handleDeleteMaterial(
     }
   }
 
-  // Material löschen (Cascade löscht material_classes + material_students)
   try {
     await env.DB.prepare("DELETE FROM materials WHERE id = ?")
       .bind(materialId)
@@ -302,7 +267,7 @@ export async function handleDeleteMaterial(
 }
 
 // ============================================================
-// GET /api/materials/:id/download — Datei herunterladen
+// GET /api/materials/:id/download
 // ============================================================
 
 export async function handleMaterialDownload(
@@ -329,12 +294,7 @@ export async function handleMaterialDownload(
   if (!material) return notFound("Material nicht gefunden");
   if (!material.file_key) return notFound("Keine Datei zu diesem Material");
 
-  // Zugriff prüfen: Eigentümer, Admin, oder freigeschaltet
-  if (
-    ctx.user.role !== "admin" &&
-    material.teacher_id !== ctx.user.id
-  ) {
-    // Prüfe Freischaltung
+  if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     const hasAccess = await env.DB.prepare(
       `SELECT 1 FROM materials m
        WHERE m.id = ?
@@ -372,8 +332,7 @@ export async function handleMaterialDownload(
 }
 
 // ============================================================
-// POST /api/materials/:id/access — Freischaltung setzen
-// Body: { classIds: string[], studentIds: string[] }
+// POST /api/materials/:id/access
 // ============================================================
 
 export async function handleSetMaterialAccess(
@@ -386,7 +345,6 @@ export async function handleSetMaterialAccess(
 
   if (request.method !== "POST") return methodNotAllowed(["POST"]);
 
-  // Material prüfen
   const material = await env.DB.prepare(
     "SELECT id, teacher_id, title FROM materials WHERE id = ?"
   )
@@ -395,10 +353,7 @@ export async function handleSetMaterialAccess(
 
   if (!material) return notFound("Material nicht gefunden");
 
-  if (
-    ctx.user.role !== "admin" &&
-    material.teacher_id !== ctx.user.id
-  ) {
+  if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
 
@@ -413,7 +368,6 @@ export async function handleSetMaterialAccess(
   const studentIds = body.studentIds ?? [];
 
   try {
-    // Alte Zuordnungen löschen
     await env.DB.prepare("DELETE FROM material_classes WHERE material_id = ?")
       .bind(materialId)
       .run();
@@ -421,7 +375,6 @@ export async function handleSetMaterialAccess(
       .bind(materialId)
       .run();
 
-    // Klassen hinzufügen
     for (const classId of classIds) {
       await env.DB.prepare(
         `INSERT INTO material_classes (id, material_id, class_id)
@@ -431,7 +384,6 @@ export async function handleSetMaterialAccess(
         .run();
     }
 
-    // Schüler hinzufügen
     for (const studentId of studentIds) {
       await env.DB.prepare(
         `INSERT INTO material_students (id, material_id, student_id)
@@ -441,21 +393,22 @@ export async function handleSetMaterialAccess(
         .run();
     }
 
-    // Notifications senden
     try {
-      // Alle Schüler der freigeschalteten Klassen
-      const studentsInClasses = await env.DB.prepare(
-        `SELECT DISTINCT student_id FROM class_students WHERE class_id IN (${
-          classIds.length > 0 ? classIds.map(() => "?").join(",") : "''"
-        })`
-      )
-        .bind(...classIds)
-        .all<{ student_id: string }>();
-
       const allStudentIds = new Set<string>();
-      for (const s of studentsInClasses.results ?? []) {
-        allStudentIds.add(s.student_id);
+
+      if (classIds.length > 0) {
+        const placeholders = classIds.map(() => "?").join(",");
+        const inClasses = await env.DB.prepare(
+          `SELECT DISTINCT student_id FROM class_students WHERE class_id IN (${placeholders})`
+        )
+          .bind(...classIds)
+          .all<{ student_id: string }>();
+
+        for (const s of inClasses.results ?? []) {
+          allStudentIds.add(s.student_id);
+        }
       }
+
       for (const sid of studentIds) {
         allStudentIds.add(sid);
       }
@@ -482,7 +435,7 @@ export async function handleSetMaterialAccess(
 }
 
 // ============================================================
-// GET /api/materials/:id/access — Freischaltungen abrufen
+// GET /api/materials/:id/access
 // ============================================================
 
 export async function handleGetMaterialAccess(
@@ -503,10 +456,7 @@ export async function handleGetMaterialAccess(
 
   if (!material) return notFound("Material nicht gefunden");
 
-  if (
-    ctx.user.role !== "admin" &&
-    material.teacher_id !== ctx.user.id
-  ) {
+  if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
 
@@ -547,7 +497,7 @@ export async function handleGetMaterialAccess(
 }
 
 // ============================================================
-// GET /api/materials/subjects — Verfügbare Fächer für Filter
+// GET /api/materials/subjects
 // ============================================================
 
 export async function handleMaterialSubjects(
