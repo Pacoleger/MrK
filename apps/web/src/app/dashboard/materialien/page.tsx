@@ -7,27 +7,34 @@ import {
   Loader2,
   Inbox,
   Filter,
-  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MaterialCard } from "@/components/materials/material-card";
 import { MaterialUploadDialog } from "@/components/materials/material-upload-dialog";
+import { MaterialViewer } from "@/components/materials/material-viewer";
 import { AccessDialog } from "@/components/materials/access-dialog";
-import { materialsApi, type Material, type SubjectOption } from "@/lib/materials-api";
+import {
+  materialsApi,
+  type Material,
+  type SubjectOption,
+} from "@/lib/materials-api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MaterialViewer } from "@/components/materials/material-viewer";
+
 export default function MaterialienPage() {
   const { user } = useAuth();
   const toast = useToast();
-  const [viewMaterial, setViewMaterial] = React.useState<Material | null>(null);
+
   const [materials, setMaterials] = React.useState<Material[]>([]);
   const [subjects, setSubjects] = React.useState<SubjectOption[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [showUpload, setShowUpload] = React.useState(false);
-  const [accessMaterial, setAccessMaterial] = React.useState<Material | null>(null);
+  const [accessMaterial, setAccessMaterial] = React.useState<Material | null>(
+    null
+  );
+  const [viewMaterial, setViewMaterial] = React.useState<Material | null>(null);
   const [activeSubject, setActiveSubject] = React.useState<string>("");
 
   const isTeacher = user?.role === "teacher" || user?.role === "admin";
@@ -69,15 +76,20 @@ export default function MaterialienPage() {
     }
   };
 
-  const handleDownload = async (material: Material) => {
-    try {
+  const handleOpen = (material: Material) => {
+    if (material.type === "html") {
+      setViewMaterial(material);
+    } else if (material.type === "link" && material.url) {
+      window.open(material.url, "_blank", "noopener,noreferrer");
+    } else if (material.type === "file") {
       const API_URL =
         process.env.NEXT_PUBLIC_API_URL ??
         "https://mrk-api.pacokamegne.workers.dev";
-      const url = `${API_URL}/api/materials/${material.id}/download`;
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      toast.error("Fehler", "Download fehlgeschlagen");
+      window.open(
+        `${API_URL}/api/materials/${material.id}/download`,
+        "_blank",
+        "noopener,noreferrer"
+      );
     }
   };
 
@@ -166,7 +178,7 @@ export default function MaterialienPage() {
               onManageAccess={
                 isTeacher ? (mat) => setAccessMaterial(mat) : undefined
               }
-              onDownload={handleDownload}
+              onDownload={handleOpen}
             />
           ))}
         </div>
@@ -195,6 +207,13 @@ export default function MaterialienPage() {
             toast.success("Gespeichert!", "Freischaltung wurde aktualisiert.");
             load();
           }}
+        />
+      )}
+
+      {viewMaterial && (
+        <MaterialViewer
+          material={viewMaterial}
+          onClose={() => setViewMaterial(null)}
         />
       )}
     </div>
