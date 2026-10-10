@@ -22,7 +22,7 @@ interface MaterialRow {
   subject_id: string;
   title: string;
   description: string | null;
-  type: "file" | "link";
+  type: "file" | "link" | "html";
   file_key: string | null;
   file_name: string | null;
   file_type: string | null;
