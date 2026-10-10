@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   title: "MrK – Lernplattform",
   description:
     "Moderne Lernplattform für Mathematik, Physik, Chemie und Biologie (Klassen 7–13)",
+  icons: {
+    icon: "/mrk-logo.png",
+    apple: "/mrk-logo.png",
+  },
 };
 
 export default function RootLayout({
