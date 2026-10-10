@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -138,9 +139,13 @@ export default function DashboardLayout({
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-4 sm:px-6 gap-3">
             <div className="lg:hidden flex items-center gap-2 font-bold">
-              <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-sm">
-                MrK
-              </span>
+              <Image
+                src="/mrk-logo.png"
+                alt="MrK Logo"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
+              />
             </div>
 
             <div className="flex-1" />
