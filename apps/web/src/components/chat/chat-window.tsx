@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Send, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { chatApi, type Conversation, type Message } from "@/lib/chat-api";
-
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -27,12 +27,10 @@ export function ChatWindow({
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-scroll ans Ende
   const scrollToBottom = React.useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Nachrichten laden
   const loadMessages = React.useCallback(async () => {
     try {
       const data = await chatApi.messages(conversation.id);
@@ -45,19 +43,16 @@ export function ChatWindow({
     }
   }, [conversation.id]);
 
-  // Initial laden
   React.useEffect(() => {
     setIsLoading(true);
     loadMessages();
   }, [loadMessages]);
 
-  // Polling alle 5 Sek
   React.useEffect(() => {
     const interval = setInterval(loadMessages, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [loadMessages]);
 
-  // Auto-scroll wenn neue Nachrichten
   React.useEffect(() => {
     if (messages.length > 0) {
       scrollToBottom();
@@ -71,7 +66,6 @@ export function ChatWindow({
     setIsSending(true);
     setError(null);
 
-    // Optimistic update
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: conversation.id,
@@ -81,6 +75,7 @@ export function ChatWindow({
       created_at: new Date().toISOString(),
       sender_first_name: "Du",
       sender_last_name: "",
+      sender_avatar_url: null,
     };
     setMessages((prev) => [...prev, tempMessage]);
     setInput("");
@@ -108,6 +103,7 @@ export function ChatWindow({
     conversation.other_first_name.charAt(0) +
     conversation.other_last_name.charAt(0)
   ).toUpperCase();
+  const hasAvatar = !!conversation.other_avatar_url;
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -123,9 +119,19 @@ export function ChatWindow({
           </button>
         )}
 
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
-          {initials}
-        </div>
+        {hasAvatar ? (
+          <Image
+            src={conversation.other_avatar_url!}
+            alt={`${conversation.other_first_name} ${conversation.other_last_name}`}
+            width={40}
+            height={40}
+            className="w-10 h-10 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
+            {initials}
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
           <p className="font-semibold truncate">
@@ -159,14 +165,37 @@ export function ChatWindow({
         ) : (
           messages.map((msg) => {
             const isMe = msg.sender_id === currentUserId;
+            const msgInitials = (
+              msg.sender_first_name.charAt(0) +
+              (msg.sender_last_name.charAt(0) || "")
+            ).toUpperCase();
+            const hasMsgAvatar = !!msg.sender_avatar_url;
+
             return (
               <div
                 key={msg.id}
                 className={cn(
-                  "flex",
+                  "flex items-end gap-2",
                   isMe ? "justify-end" : "justify-start"
                 )}
               >
+                {/* Avatar für andere Nutzer */}
+                {!isMe && (
+                  hasMsgAvatar ? (
+                    <Image
+                      src={msg.sender_avatar_url!}
+                      alt={`${msg.sender_first_name} ${msg.sender_last_name}`}
+                      width={28}
+                      height={28}
+                      className="w-7 h-7 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-[10px] font-bold shrink-0">
+                      {msgInitials}
+                    </div>
+                  )
+                )}
+
                 <div
                   className={cn(
                     "max-w-[80%] sm:max-w-[70%] rounded-2xl px-3.5 py-2.5",
