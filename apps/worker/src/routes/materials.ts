@@ -213,8 +213,8 @@ export async function handleCreateMaterial(
     await env.DB.prepare(
       `INSERT INTO materials
         (id, teacher_id, subject_id, title, description, type,
-         file_key, file_name, file_type, file_size, url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         file_key, file_name, file_type, file_size, url, content)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         materialId,
