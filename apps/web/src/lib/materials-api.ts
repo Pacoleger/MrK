@@ -16,6 +16,7 @@ export interface Material {
   file_type: string | null;
   file_size: number | null;
   url: string | null;
+  content: string | null;
   created_at: string;
   updated_at: string;
   subject_name?: string;
