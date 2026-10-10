@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { MessageSquare, Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/lib/chat-api";
-
 
 export function ChatList({
   conversations,
@@ -86,6 +86,7 @@ export function ChatList({
             const initials = (
               conv.other_first_name.charAt(0) + conv.other_last_name.charAt(0)
             ).toUpperCase();
+            const hasAvatar = !!conv.other_avatar_url;
 
             return (
               <button
@@ -99,9 +100,19 @@ export function ChatList({
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
-                    {initials}
-                  </div>
+                  {hasAvatar ? (
+                    <Image
+                      src={conv.other_avatar_url!}
+                      alt={`${conv.other_first_name} ${conv.other_last_name}`}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
+                      {initials}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p
