@@ -18,6 +18,7 @@ import {
   Leaf,
   Sigma,
 } from "lucide-react";
+
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
