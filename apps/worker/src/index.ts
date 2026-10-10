@@ -78,7 +78,16 @@ import {
   handleClassStudents,
   handlePublicClasses,
 } from "./routes/classes";
-
+// Welle 8: Materials
+import {
+  handleMaterials,
+  handleCreateMaterial,
+  handleDeleteMaterial,
+  handleMaterialDownload,
+  handleSetMaterialAccess,
+  handleGetMaterialAccess,
+  handleMaterialSubjects,
+} from "./routes/materials";
 // ============================================================
 // Router-Helper
 // ============================================================
@@ -402,7 +411,38 @@ async function route(
   }
 
   if (path === "/api/chat/users") return handleChatUsers(request, env);
+  // ============================================================
+  // Materials
+  // ============================================================
+  if (path === "/api/materials") return handleMaterials(request, env);
 
+  if (path === "/api/materials/subjects") 
+    return handleMaterialSubjects(request, env);
+
+  {
+    const mDownload = matchPath("/api/materials/:id/download", path);
+    if (mDownload) 
+      return handleMaterialDownload(request, env, mDownload.id);
+
+    const mAccess = matchPath("/api/materials/:id/access", path);
+    if (mAccess) {
+      if (method === "GET") 
+        return handleGetMaterialAccess(request, env, mAccess.id);
+      if (method === "POST") 
+        return handleSetMaterialAccess(request, env, mAccess.id);
+    }
+
+    const m = matchPath("/api/materials/:id", path);
+    if (m) {
+      if (method === "DELETE") 
+        return handleDeleteMaterial(request, env, m.id);
+    }
+  }
+
+  // POST /api/materials/create (multipart)
+  if (path === "/api/materials/create" && method === "POST") {
+    return handleCreateMaterial(request, env);
+  }
   // ============================================================
   // 404
   // ============================================================
