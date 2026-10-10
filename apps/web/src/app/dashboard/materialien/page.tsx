@@ -21,7 +21,7 @@ import { MaterialViewer } from "@/components/materials/material-viewer";
 export default function MaterialienPage() {
   const { user } = useAuth();
   const toast = useToast();
-
+  const [viewMaterial, setViewMaterial] = React.useState<Material | null>(null);
   const [materials, setMaterials] = React.useState<Material[]>([]);
   const [subjects, setSubjects] = React.useState<SubjectOption[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
