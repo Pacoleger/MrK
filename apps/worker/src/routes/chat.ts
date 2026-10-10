@@ -19,7 +19,6 @@ interface ConversationRow {
   user2_id: string;
   last_message_at: string | null;
   created_at: string;
-  // Joined
   other_id: string;
   other_first_name: string;
   other_last_name: string;
@@ -39,10 +38,11 @@ interface MessageRow {
   created_at: string;
   sender_first_name: string;
   sender_last_name: string;
+  sender_avatar_url: string | null;
 }
 
 // ============================================================
-// Hilfsfunktion: Conversation finden oder erstellen
+// Hilfsfunktion
 // ============================================================
 
 async function findOrCreateConversation(
@@ -54,7 +54,6 @@ async function findOrCreateConversation(
     throw new Error("Kann keine Konversation mit sich selbst erstellen");
   }
 
-  // Normalisieren: user1 immer < user2 (alphabetisch), um Duplikate zu vermeiden
   const [u1, u2] = [userId, otherUserId].sort();
 
   const existing = await env.DB.prepare(
@@ -77,7 +76,7 @@ async function findOrCreateConversation(
 }
 
 // ============================================================
-// GET /api/chat/conversations — Alle Konversationen des Users
+// GET /api/chat/conversations
 // ============================================================
 
 export async function handleConversations(
@@ -132,8 +131,7 @@ export async function handleConversations(
 }
 
 // ============================================================
-// POST /api/chat/conversations — Neue Konversation starten
-// Body: { otherUserId: string }
+// POST /api/chat/conversations
 // ============================================================
 
 export async function handleCreateConversation(
@@ -164,9 +162,8 @@ export async function handleCreateConversation(
     );
   }
 
-  // Prüfe, ob anderer User existiert
   const other = await env.DB.prepare(
-    "SELECT id, first_name, last_name, role FROM users WHERE id = ? AND is_active = 1"
+    "SELECT id, first_name, last_name, role, avatar_url FROM users WHERE id = ? AND is_active = 1"
   )
     .bind(body.otherUserId)
     .first<{
@@ -174,6 +171,7 @@ export async function handleCreateConversation(
       first_name: string;
       last_name: string;
       role: string;
+      avatar_url: string | null;
     }>();
 
   if (!other) {
@@ -200,7 +198,7 @@ export async function handleCreateConversation(
 }
 
 // ============================================================
-// GET /api/chat/conversations/:id/messages — Nachrichten laden
+// GET /api/chat/conversations/:id/messages
 // ============================================================
 
 export async function handleMessages(
@@ -213,7 +211,6 @@ export async function handleMessages(
 
   if (request.method !== "GET") return methodNotAllowed(["GET"]);
 
-  // Prüfe, ob User Teil der Konversation
   const conv = await env.DB.prepare(
     "SELECT user1_id, user2_id FROM conversations WHERE id = ?"
   )
@@ -231,7 +228,8 @@ export async function handleMessages(
       `SELECT 
         m.id, m.conversation_id, m.sender_id, m.content, m.read_at, m.created_at,
         u.first_name AS sender_first_name,
-        u.last_name AS sender_last_name
+        u.last_name AS sender_last_name,
+        u.avatar_url AS sender_avatar_url
        FROM messages m
        JOIN users u ON u.id = m.sender_id
        WHERE m.conversation_id = ?
@@ -241,7 +239,6 @@ export async function handleMessages(
       .bind(conversationId)
       .all<MessageRow>();
 
-    // Markiere ungelesene Nachrichten als gelesen
     await env.DB.prepare(
       `UPDATE messages 
        SET read_at = datetime('now')
@@ -260,8 +257,7 @@ export async function handleMessages(
 }
 
 // ============================================================
-// POST /api/chat/conversations/:id/messages — Nachricht senden
-// Body: { content: string }
+// POST /api/chat/conversations/:id/messages
 // ============================================================
 
 export async function handleSendMessage(
@@ -285,7 +281,6 @@ export async function handleSendMessage(
     return fail("CONTENT_REQUIRED", "Nachricht ist leer", 400);
   }
 
-  // Prüfe Zugriff
   const conv = await env.DB.prepare(
     "SELECT user1_id, user2_id FROM conversations WHERE id = ?"
   )
@@ -323,7 +318,7 @@ export async function handleSendMessage(
 }
 
 // ============================================================
-// GET /api/chat/users — Alle Nutzer (für neue Konversation)
+// GET /api/chat/users
 // ============================================================
 
 export async function handleChatUsers(
@@ -340,7 +335,7 @@ export async function handleChatUsers(
 
   try {
     let query = `
-      SELECT id, first_name, last_name, email, role
+      SELECT id, first_name, last_name, email, role, avatar_url
       FROM users
       WHERE is_active = 1 AND id != ?
     `;
