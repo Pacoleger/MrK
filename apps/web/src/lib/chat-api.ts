@@ -29,6 +29,7 @@ export interface Message {
   created_at: string;
   sender_first_name: string;
   sender_last_name: string;
+  sender_avatar_url: string | null;
 }
 
 export interface ChatUser {
@@ -37,6 +38,7 @@ export interface ChatUser {
   last_name: string;
   email: string;
   role: "admin" | "teacher" | "student";
+  avatar_url: string | null;
 }
 
 // ============================================================
