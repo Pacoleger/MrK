@@ -3,6 +3,7 @@
 import {
   FileText,
   Link as LinkIcon,
+  BookOpen,
   Download,
   Trash2,
   Users,
@@ -51,12 +52,31 @@ export function MaterialCard({
   };
 
   const handleClick = () => {
-    if (material.type === "link" && material.url) {
-      window.open(material.url, "_blank", "noopener,noreferrer");
-    } else if (material.type === "file" && onDownload) {
+    if (onDownload) {
       onDownload(material);
     }
   };
+
+  const getIcon = () => {
+    if (material.type === "file") return FileText;
+    if (material.type === "link") return LinkIcon;
+    return BookOpen;
+  };
+
+  const getActionLabel = () => {
+    if (material.type === "html") return "Lesen";
+    if (material.type === "link") return "Öffnen";
+    return "Download";
+  };
+
+  const getActionIcon = () => {
+    if (material.type === "html") return BookOpen;
+    if (material.type === "link") return ExternalLink;
+    return Download;
+  };
+
+  const Icon = getIcon();
+  const ActionIcon = getActionIcon();
 
   return (
     <Card className="overflow-hidden group hover:shadow-lg transition">
@@ -71,11 +91,7 @@ export function MaterialCard({
               colorClass
             )}
           >
-            {material.type === "file" ? (
-              <FileText className="h-5 w-5" />
-            ) : (
-              <LinkIcon className="h-5 w-5" />
-            )}
+            <Icon className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -93,7 +109,7 @@ export function MaterialCard({
               ) : (
                 <Lock className="h-2.5 w-2.5" />
               )}
-              {hasAccess ? "Freigeschaltet" : "Nicht freigegeben"}
+              {hasAccess ? "Freigegeben" : "Gesperrt"}
             </Badge>
           )}
         </div>
@@ -113,9 +129,7 @@ export function MaterialCard({
               {material.teacher_first} {material.teacher_last}
             </span>
           )}
-          {material.file_size && (
-            <span>{formatSize(material.file_size)}</span>
-          )}
+          {material.file_size && <span>{formatSize(material.file_size)}</span>}
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             {new Date(material.created_at).toLocaleDateString("de-DE")}
@@ -142,25 +156,14 @@ export function MaterialCard({
 
         {/* Aktionen */}
         <div className="flex gap-2 pt-2 border-t border-border">
-          {/* Primäraktion */}
           <button
             onClick={handleClick}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/70 transition text-sm font-medium"
           >
-            {material.type === "file" ? (
-              <>
-                <Download className="h-3.5 w-3.5" />
-                Öffnen
-              </>
-            ) : (
-              <>
-                <ExternalLink className="h-3.5 w-3.5" />
-                Öffnen
-              </>
-            )}
+            <ActionIcon className="h-3.5 w-3.5" />
+            {getActionLabel()}
           </button>
 
-          {/* Lehrer-Aktionen */}
           {isTeacher && (
             <>
               {onManageAccess && (
