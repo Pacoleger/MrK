@@ -47,8 +47,9 @@ export function useIdleTimer({
     null
   );
   const isPromptingRef = React.useRef(false);
+  const disabledRef = React.useRef(disabled);
 
-  // Stabile Referenzen auf Callbacks
+  // Stabile Referenzen
   const onPromptRef = React.useRef(onPrompt);
   const onIdleRef = React.useRef(onIdle);
   const onActiveRef = React.useRef(onActive);
@@ -57,7 +58,8 @@ export function useIdleTimer({
     onPromptRef.current = onPrompt;
     onIdleRef.current = onIdle;
     onActiveRef.current = onActive;
-  }, [onPrompt, onIdle, onActive]);
+    disabledRef.current = disabled;
+  }, [onPrompt, onIdle, onActive, disabled]);
 
   // ============================================================
   // Timer zurücksetzen
@@ -76,14 +78,17 @@ export function useIdleTimer({
 
   const startTimer = React.useCallback(() => {
     clearTimers();
+
+    console.log(`[useIdleTimer] ⏱️  Timer startet für ${timeout / 1000}s`);
+
     timeoutRef.current = setTimeout(() => {
-      // Timeout erreicht → Warnung anzeigen
+      console.log("[useIdleTimer] ⏰ Idle-Timeout erreicht → Warnung");
       isPromptingRef.current = true;
       setIsPrompting(true);
       onPromptRef.current();
 
-      // Nach promptTimeout → Logout
       promptTimeoutRef.current = setTimeout(() => {
+        console.log("[useIdleTimer] 🚪 Prompt-Timeout erreicht → Logout");
         isPromptingRef.current = false;
         setIsPrompting(false);
         onIdleRef.current();
@@ -96,23 +101,29 @@ export function useIdleTimer({
   // ============================================================
 
   const handleActivity = React.useCallback(() => {
-    if (disabled) return;
+    if (disabledRef.current) return;
 
-    // Wenn Warnung aktiv → Aktivität bestätigt
+    // Wenn Warnung aktiv → Nutzer ist zurückgekommen
     if (isPromptingRef.current) {
+      console.log("[useIdleTimer] ✅ Aktivität während Warnung");
       isPromptingRef.current = false;
       setIsPrompting(false);
+      if (promptTimeoutRef.current) {
+        clearTimeout(promptTimeoutRef.current);
+        promptTimeoutRef.current = null;
+      }
       onActiveRef.current?.();
     }
 
     startTimer();
-  }, [disabled, startTimer]);
+  }, [startTimer]);
 
   // ============================================================
-  // Reset manuell (nach Login, "Weiter"-Klick, etc.)
+  // Manueller Reset
   // ============================================================
 
   const reset = React.useCallback(() => {
+    console.log("[useIdleTimer] 🔄 Manuell zurückgesetzt");
     isPromptingRef.current = false;
     setIsPrompting(false);
     startTimer();
@@ -124,17 +135,19 @@ export function useIdleTimer({
 
   React.useEffect(() => {
     if (disabled) {
+      console.log("[useIdleTimer] ❌ Disabled");
       clearTimers();
       return;
     }
 
+    console.log("[useIdleTimer] ▶️  Starte Timer");
     startTimer();
 
-    // Throttle Activity-Events (max alle 500ms)
     let lastActivity = 0;
     const throttledHandler = () => {
       const now = Date.now();
-      if (now - lastActivity < 500) return;
+      // Throttle: max alle 5s ein Reset
+      if (now - lastActivity < 5000) return;
       lastActivity = now;
       handleActivity();
     };
@@ -143,8 +156,8 @@ export function useIdleTimer({
       window.addEventListener(event, throttledHandler, { passive: true });
     });
 
-    // Cleanup
     return () => {
+      console.log("[useIdleTimer] 🛑 Cleanup");
       clearTimers();
       events.forEach((event) => {
         window.removeEventListener(event, throttledHandler);
