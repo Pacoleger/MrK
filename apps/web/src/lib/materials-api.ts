@@ -62,12 +62,13 @@ export const materialsApi = {
   },
 
   async create(data: {
-    type: "file" | "link";
+    type: "file" | "link" | "html";
     title: string;
     description?: string;
     subjectId: string;
     file?: File;
     url?: string;
+    content?: string;
   }): Promise<{ id: string; message: string }> {
     const formData = new FormData();
     formData.append("type", data.type);
@@ -79,6 +80,9 @@ export const materialsApi = {
     }
     if (data.type === "link" && data.url) {
       formData.append("url", data.url);
+    }
+    if (data.type === "html" && data.content) {
+      formData.append("content", data.content);
     }
 
     const API_URL =
