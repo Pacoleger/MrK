@@ -3,7 +3,11 @@
 // ============================================================
 
 export const AUTH_COOKIE_NAME = "mrk_session";
-export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 Tage
+
+/**
+ * Cookie läuft 8 Stunden (passend zum JWT).
+ */
+export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 8; // 8 Stunden
 
 /**
  * Liest einen Cookie-Wert aus dem Request.
@@ -54,7 +58,7 @@ export function buildClearAuthCookie(): string {
 }
 
 /**
- * Gibt alle Set-Cookie-Header für eine Response zurück.
+ * Gibt eine Response mit Auth-Cookie zurück.
  */
 export function withAuthCookie(response: Response, token: string): Response {
   const headers = new Headers(response.headers);
