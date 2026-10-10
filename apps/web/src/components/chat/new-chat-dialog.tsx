@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { X, Search, Loader2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { chatApi, type ChatUser } from "@/lib/chat-api";
 
 export function NewChatDialog({
@@ -85,15 +84,27 @@ export function NewChatDialog({
               const initials = (
                 u.first_name.charAt(0) + u.last_name.charAt(0)
               ).toUpperCase();
+              const hasAvatar = !!u.avatar_url;
+
               return (
                 <button
                   key={u.id}
                   onClick={() => onSelect(u.id)}
                   className="w-full flex items-center gap-3 p-3 border-b border-border last:border-0 hover:bg-muted/50 transition text-left touch-target"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
-                    {initials}
-                  </div>
+                  {hasAvatar ? (
+                    <Image
+                      src={u.avatar_url!}
+                      alt={`${u.first_name} ${u.last_name}`}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white text-xs font-bold shrink-0">
+                      {initials}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
                       {u.first_name} {u.last_name}
