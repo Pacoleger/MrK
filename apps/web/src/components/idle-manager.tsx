@@ -19,6 +19,20 @@ const TEST_PROMPT_TIMEOUT_MS = 15 * 1000;       // 15 Sek (Test)
 const COUNTDOWN_INTERVAL_MS = 1000;
 
 // ============================================================
+// Helper: Test-Modus direkt aus URL lesen
+// ============================================================
+
+function readTestMode(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("idle_test") === "1";
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
 // Idle Manager
 // ============================================================
 
@@ -26,14 +40,8 @@ export function IdleManager() {
   const router = useRouter();
   const { user, logout } = useAuth();
 
-  // Test-Modus über URL-Parameter (ohne useSearchParams)
-  const [testMode, setTestMode] = React.useState(false);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    setTestMode(params.get("idle_test") === "1");
-  }, []);
+  // WICHTIG: Test-Modus SYNCHRON beim ersten Render lesen
+  const [testMode] = React.useState<boolean>(() => readTestMode());
 
   const idleTimeout = testMode ? TEST_IDLE_TIMEOUT_MS : DEFAULT_IDLE_TIMEOUT_MS;
   const promptTimeout = testMode
@@ -46,24 +54,21 @@ export function IdleManager() {
 
   const isLoggedIn = !!user;
 
-  // Debug-Log
+  // Debug
   React.useEffect(() => {
     if (!isLoggedIn) return;
-    if (testMode) {
-      console.log(
-        `[IdleManager] 🧪 TEST-MODUS: Idle=${idleTimeout / 1000}s, Prompt=${promptTimeout / 1000}s`
-      );
-    } else {
-      console.log(
-        `[IdleManager] ⏱️  Idle=${idleTimeout / 60000}min, Prompt=${promptTimeout / 1000}s`
-      );
-    }
+    const mode = testMode ? "🧪 TEST" : "⏱️  PROD";
+    console.log(
+      `[IdleManager] ${mode}: Idle=${idleTimeout / 1000}s, Prompt=${promptTimeout / 1000}s`
+    );
   }, [isLoggedIn, testMode, idleTimeout, promptTimeout]);
 
   const handleIdle = React.useCallback(async () => {
-    console.log("[IdleManager] 🚪 Auto-Logout");
+    console.log("[IdleManager] 🚪 Auto-Logout ausgelöst");
     try {
       await logout();
+    } catch (err) {
+      console.error("[IdleManager] Logout fehlgeschlagen:", err);
     } finally {
       router.push("/login?reason=idle_timeout");
     }
@@ -93,6 +98,15 @@ export function IdleManager() {
 
     return () => clearInterval(interval);
   }, [isPrompting]);
+
+  // Auto-Logout bei 0 Sekunden (Sicherheitsnetz)
+  React.useEffect(() => {
+    if (!isPrompting) return;
+    if (secondsRemaining > 0) return;
+    // Fallback: Wenn Prompt 0 erreicht, aber noch offen → Logout
+    console.log("[IdleManager] ⏰ Countdown 0 → Logout");
+    handleIdle();
+  }, [isPrompting, secondsRemaining, handleIdle]);
 
   if (!isPrompting || !isLoggedIn) return null;
 
