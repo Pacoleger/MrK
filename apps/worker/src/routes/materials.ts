@@ -157,6 +157,9 @@ export async function handleCreateMaterial(
   if (type === "link" && !url) {
     return fail("URL_REQUIRED", "URL ist erforderlich", 400);
   }
+  if (type === "html" && !content) {
+    return fail("CONTENT_REQUIRED", "Inhalt ist erforderlich", 400);
+  }
 
   // Prüfe Fach
   const subject = await env.DB.prepare("SELECT id FROM subjects WHERE id = ?")
