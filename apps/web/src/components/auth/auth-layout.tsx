@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Atom, FlaskConical, Leaf, Sigma } from "lucide-react";
 import { useT } from "@/i18n/use-translation";
+import Image from "next/image";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -33,9 +34,16 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           href="/"
           className="relative flex items-center gap-2 font-bold text-xl"
         >
-          <span className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur grid place-items-center">
-            MrK
-          </span>
+          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur grid place-items-center p-1">
+            <Image
+              src="/mrk-logo.png"
+              alt="MrK Logo"
+              width={36}
+              height={36}
+              className="w-full h-full object-contain"
+              priority
+            />
+          </div>
           <span>Lernplattform</span>
         </Link>
 
