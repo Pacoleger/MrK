@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Atom, FlaskConical, Leaf, Sigma } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { UserMenu } from "@/components/user-menu";
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
-import Image from "next/image";
 
 const subjects = [
   { key: "math",      icon: Sigma,        color: "from-brand-500 to-brand-700" },
