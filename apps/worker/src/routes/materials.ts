@@ -144,6 +144,7 @@ export async function handleCreateMaterial(
   const description = (formData.get("description") as string | null)?.trim();
   const subjectId = (formData.get("subjectId") as string | null)?.trim();
   const url = (formData.get("url") as string | null)?.trim();
+  const content = (formData.get("content") as string | null)?.trim();
   const file = formData.get("file") as File | null;
 
   if (!title) return fail("TITLE_REQUIRED", "Titel ist erforderlich", 400);
