@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useIdleTimer } from "@/hooks/use-idle-timer";
 import { IdleWarningDialog } from "./idle-warning-dialog";
@@ -24,10 +24,16 @@ const COUNTDOWN_INTERVAL_MS = 1000;
 
 export function IdleManager() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, logout } = useAuth();
 
-  const testMode = searchParams.get("idle_test") === "1";
+  // Test-Modus über URL-Parameter (ohne useSearchParams)
+  const [testMode, setTestMode] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setTestMode(params.get("idle_test") === "1");
+  }, []);
 
   const idleTimeout = testMode ? TEST_IDLE_TIMEOUT_MS : DEFAULT_IDLE_TIMEOUT_MS;
   const promptTimeout = testMode
@@ -40,8 +46,22 @@ export function IdleManager() {
 
   const isLoggedIn = !!user;
 
+  // Debug-Log
+  React.useEffect(() => {
+    if (!isLoggedIn) return;
+    if (testMode) {
+      console.log(
+        `[IdleManager] 🧪 TEST-MODUS: Idle=${idleTimeout / 1000}s, Prompt=${promptTimeout / 1000}s`
+      );
+    } else {
+      console.log(
+        `[IdleManager] ⏱️  Idle=${idleTimeout / 60000}min, Prompt=${promptTimeout / 1000}s`
+      );
+    }
+  }, [isLoggedIn, testMode, idleTimeout, promptTimeout]);
+
   const handleIdle = React.useCallback(async () => {
-    console.log("[IdleManager] 🚪 Logout wegen Inaktivität");
+    console.log("[IdleManager] 🚪 Auto-Logout");
     try {
       await logout();
     } finally {
@@ -53,7 +73,7 @@ export function IdleManager() {
     timeout: idleTimeout,
     promptTimeout,
     onPrompt: () => {
-      console.log("[IdleManager] ⚠️ Warnung");
+      console.log("[IdleManager] ⚠️  Warnung anzeigen");
       setSecondsRemaining(Math.floor(promptTimeout / 1000));
     },
     onIdle: handleIdle,
@@ -63,6 +83,7 @@ export function IdleManager() {
     disabled: !isLoggedIn,
   });
 
+  // Countdown tick
   React.useEffect(() => {
     if (!isPrompting) return;
 
@@ -78,7 +99,10 @@ export function IdleManager() {
   return (
     <IdleWarningDialog
       secondsRemaining={secondsRemaining}
-      onContinue={() => reset()}
+      onContinue={() => {
+        console.log("[IdleManager] ✅ Nutzer ist zurück");
+        reset();
+      }}
       onLogout={handleIdle}
     />
   );
