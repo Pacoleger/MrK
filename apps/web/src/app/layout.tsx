@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/i18n/provider";
@@ -37,7 +38,9 @@ export default function RootLayout({
             <AuthProvider>
               <ToastProvider>
                 {children}
-                <IdleManager />
+                <Suspense fallback={null}>
+                  <IdleManager />
+                </Suspense>
               </ToastProvider>
             </AuthProvider>
           </I18nProvider>
