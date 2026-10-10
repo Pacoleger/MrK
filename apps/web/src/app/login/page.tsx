@@ -3,13 +3,13 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { LoginForm } from "@/components/auth/login-form";
 import { useT } from "@/i18n/use-translation";
-import { Clock } from "lucide-react";
 
-function LoginPageInner() {
+function LoginContent() {
   const t = useT();
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
@@ -46,11 +46,11 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen grid place-items-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       }
     >
-      <LoginPageInner />
+      <LoginContent />
     </Suspense>
   );
 }
