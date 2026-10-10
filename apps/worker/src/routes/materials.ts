@@ -227,7 +227,8 @@ export async function handleCreateMaterial(
         fileName,
         fileType,
         fileSize,
-        linkUrl
+        linkUrl,
+        type === "html" ? content : null
       )
       .run();
   } catch (err) {
