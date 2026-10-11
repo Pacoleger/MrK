@@ -18,12 +18,12 @@ import {
   Leaf,
   Sigma,
 } from "lucide-react";
-
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { NotificationBell } from "@/components/notification-bell";
+import { MobileNav } from "@/components/mobile-nav";
 import { useT } from "@/i18n/use-translation";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ export default function DashboardLayout({
   return (
     <ProtectedRoute>
       <div className="min-h-screen flex bg-background">
-        {/* Sidebar */}
+        {/* Desktop-Sidebar */}
         <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card">
           <div className="p-4 border-b border-border">
             <Link href="/" className="flex items-center gap-2 font-bold">
@@ -140,16 +140,21 @@ export default function DashboardLayout({
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-4 sm:px-6 gap-3">
-            <div className="lg:hidden flex items-center gap-2 font-bold">
-              <Image
-                src="/mrk-logo.png"
-                alt="MrK Logo"
-                width={32}
-                height={32}
-                className="w-8 h-8 object-contain"
-                priority
-              />
+          {/* Header */}
+          <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-3 sm:px-6 gap-2 sm:gap-3">
+            {/* Mobile: Hamburger + Logo */}
+            <div className="lg:hidden flex items-center gap-1">
+              <MobileNav />
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/mrk-logo.png"
+                  alt="MrK Logo"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 object-contain"
+                  priority
+                />
+              </Link>
             </div>
 
             <div className="flex-1" />
@@ -160,7 +165,7 @@ export default function DashboardLayout({
             <UserMenu />
           </header>
 
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+          <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-x-hidden">
             {children}
           </main>
         </div>
