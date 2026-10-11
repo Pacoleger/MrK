@@ -31,7 +31,7 @@ export async function handleMaterials(
 
   try {
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      // ---- LEHRER ----
+      // ---- LEHRER / ADMIN: sehen ALLE Materialien ----
       let query = `
         SELECT 
           m.id, m.teacher_id, m.subject_id, m.title, m.description, m.type,
@@ -46,9 +46,9 @@ export async function handleMaterials(
         FROM materials m
         LEFT JOIN subjects s ON s.id = m.subject_id
         LEFT JOIN users u ON u.id = m.teacher_id
-        WHERE m.teacher_id = ?
+        WHERE 1=1
       `;
-      const params: unknown[] = [ctx.user.id];
+      const params: unknown[] = [];
 
       if (subjectId) {
         query += " AND m.subject_id = ?";
