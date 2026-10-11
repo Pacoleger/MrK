@@ -68,32 +68,41 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Hamburger Button */}
+      {/* Hamburger Button – immer sichtbar bis lg */}
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        className="lg:hidden p-2 rounded-lg hover:bg-muted transition touch-target no-tap-highlight"
+        className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg hover:bg-muted transition touch-target no-tap-highlight"
         aria-label="Menü öffnen"
       >
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Overlay */}
+      {/* Drawer + Backdrop */}
       {open && (
-        <div
-          className="fixed inset-0 z-50 lg:hidden"
-          onClick={() => setOpen(false)}
-        >
+        <div className="fixed inset-0 z-[100] lg:hidden">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in" />
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
 
           {/* Drawer */}
           <aside
-            className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-card border-r border-border shadow-2xl flex flex-col animate-in slide-in-from-left"
+            className="absolute inset-y-0 left-0 w-[85vw] max-w-xs bg-card border-r border-border shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Hauptmenü"
           >
             {/* Header */}
-            <div className="p-4 border-b border-border flex items-center justify-between safe-top">
-              <Link href="/" className="flex items-center gap-2 font-bold">
+            <div className="p-4 border-b border-border flex items-center justify-between shrink-0">
+              <Link
+                href="/"
+                className="flex items-center gap-2 font-bold"
+                onClick={() => setOpen(false)}
+              >
                 <Image
                   src="/mrk-logo.png"
                   alt="MrK Logo"
@@ -105,6 +114,7 @@ export function MobileNav() {
                 <span>Lernplattform</span>
               </Link>
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="p-2 rounded-lg hover:bg-muted transition touch-target"
                 aria-label="Menü schließen"
@@ -124,6 +134,7 @@ export function MobileNav() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition touch-target no-tap-highlight",
                       active
@@ -137,11 +148,11 @@ export function MobileNav() {
                 );
               })}
 
-              {/* Admin */}
               {user?.role === "admin" && (
                 <div className="pt-2 mt-2 border-t border-border">
                   <Link
                     href="/dashboard/admin"
+                    onClick={() => setOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition touch-target",
                       pathname.startsWith("/dashboard/admin")
@@ -157,7 +168,7 @@ export function MobileNav() {
             </nav>
 
             {/* Fächer */}
-            <div className="p-3 border-t border-border safe-bottom">
+            <div className="p-3 border-t border-border shrink-0">
               <p className="text-xs font-semibold text-muted-foreground mb-2 px-2">
                 FÄCHER
               </p>
