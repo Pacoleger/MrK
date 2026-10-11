@@ -27,14 +27,16 @@ export async function handleMaterials(
 
   const url = new URL(request.url);
   const subjectId = url.searchParams.get("subjectId");
+  const gradeLevelParam = url.searchParams.get("gradeLevel");
 
   try {
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      // ---- LEHRER: Eigene Materialien ----
+      // ---- LEHRER ----
       let query = `
         SELECT 
           m.id, m.teacher_id, m.subject_id, m.title, m.description, m.type,
           m.file_key, m.file_name, m.file_type, m.file_size, m.url, m.content,
+          m.grade_level,
           m.created_at, m.updated_at,
           s.name_de AS subject_name,
           u.first_name AS teacher_first, 
@@ -46,25 +48,29 @@ export async function handleMaterials(
         LEFT JOIN users u ON u.id = m.teacher_id
         WHERE m.teacher_id = ?
       `;
-      const params: string[] = [ctx.user.id];
+      const params: unknown[] = [ctx.user.id];
 
       if (subjectId) {
         query += " AND m.subject_id = ?";
         params.push(subjectId);
       }
+      if (gradeLevelParam) {
+        query += " AND m.grade_level = ?";
+        params.push(Number(gradeLevelParam));
+      }
 
-      query += " ORDER BY m.created_at DESC";
+      query += " ORDER BY m.subject_id ASC, m.grade_level ASC, m.created_at DESC";
 
       const result = await env.DB.prepare(query).bind(...params).all();
-      console.log(`[listMaterials] Teacher ${ctx.user.id}: ${result.results?.length ?? 0} materials`);
       return ok({ materials: result.results ?? [] });
     }
 
-    // ---- SCHÜLER: Freigeschaltete Materialien ----
+    // ---- SCHÜLER ----
     let query = `
       SELECT 
         m.id, m.teacher_id, m.subject_id, m.title, m.description, m.type,
         m.file_key, m.file_name, m.file_type, m.file_size, m.url, m.content,
+        m.grade_level,
         m.created_at, m.updated_at,
         s.name_de AS subject_name,
         u.first_name AS teacher_first, 
@@ -84,17 +90,20 @@ export async function handleMaterials(
         )
       )
     `;
-    const params: string[] = [ctx.user.id, ctx.user.id];
+    const params: unknown[] = [ctx.user.id, ctx.user.id];
 
     if (subjectId) {
       query += " AND m.subject_id = ?";
       params.push(subjectId);
     }
+    if (gradeLevelParam) {
+      query += " AND m.grade_level = ?";
+      params.push(Number(gradeLevelParam));
+    }
 
-    query += " ORDER BY m.created_at DESC";
+    query += " ORDER BY m.subject_id ASC, m.grade_level ASC, m.created_at DESC";
 
     const result = await env.DB.prepare(query).bind(...params).all();
-    console.log(`[listMaterials] Student ${ctx.user.id}: ${result.results?.length ?? 0} materials`);
     return ok({ materials: result.results ?? [] });
   } catch (err) {
     console.error("listMaterials error:", err);
@@ -133,6 +142,7 @@ export async function handleCreateMaterial(
   const title = (formData.get("title") as string | null)?.trim();
   const description = (formData.get("description") as string | null)?.trim();
   const subjectId = (formData.get("subjectId") as string | null)?.trim();
+  const gradeLevelRaw = (formData.get("gradeLevel") as string | null)?.trim();
   const url = (formData.get("url") as string | null)?.trim();
   const content = (formData.get("content") as string | null)?.trim();
   const file = formData.get("file") as File | null;
@@ -140,6 +150,15 @@ export async function handleCreateMaterial(
   if (!title) return fail("TITLE_REQUIRED", "Titel ist erforderlich", 400);
   if (!subjectId) return fail("SUBJECT_REQUIRED", "Fach ist erforderlich", 400);
   if (!type) return fail("TYPE_REQUIRED", "Typ ist erforderlich", 400);
+
+  // Grade Level validieren
+  let gradeLevel: number | null = null;
+  if (gradeLevelRaw) {
+    const g = Number(gradeLevelRaw);
+    if (Number.isFinite(g) && g >= 5 && g <= 13) {
+      gradeLevel = g;
+    }
+  }
 
   if (type === "file" && !file) {
     return fail("FILE_REQUIRED", "Datei ist erforderlich", 400);
@@ -168,15 +187,12 @@ export async function handleCreateMaterial(
     if (!env.STORAGE) {
       return serverError("Storage nicht konfiguriert");
     }
-
     const check = validateFile(file);
     if (!check.valid) {
       return fail(check.error!, "Datei-Validierung fehlgeschlagen", 400);
     }
-
     fileKey = makeFileKey("materials", ctx.user.id, file.name);
     const arrayBuffer = await file.arrayBuffer();
-
     try {
       await env.STORAGE.put(fileKey, arrayBuffer, {
         httpMetadata: { contentType: file.type },
@@ -189,7 +205,6 @@ export async function handleCreateMaterial(
       console.error("R2 put error:", err);
       return serverError("Datei konnte nicht gespeichert werden");
     }
-
     fileName = file.name;
     fileType = file.type;
     fileSize = file.size;
@@ -203,8 +218,8 @@ export async function handleCreateMaterial(
     await env.DB.prepare(
       `INSERT INTO materials
         (id, teacher_id, subject_id, title, description, type,
-         file_key, file_name, file_type, file_size, url, content)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         file_key, file_name, file_type, file_size, url, content, grade_level)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         materialId,
@@ -218,7 +233,8 @@ export async function handleCreateMaterial(
         fileType,
         fileSize,
         linkUrl,
-        htmlContent
+        htmlContent,
+        gradeLevel
       )
       .run();
   } catch (err) {
@@ -231,7 +247,7 @@ export async function handleCreateMaterial(
     action: "upload_file",
     targetType: "material",
     targetId: materialId,
-    metadata: { title, type, subjectId },
+    metadata: { title, type, subjectId, gradeLevel },
     request,
   });
 
@@ -249,7 +265,6 @@ export async function handleDeleteMaterial(
 ): Promise<Response> {
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
-
   if (request.method !== "DELETE") return methodNotAllowed(["DELETE"]);
 
   const material = await env.DB.prepare(
@@ -259,7 +274,6 @@ export async function handleDeleteMaterial(
     .first<{ id: string; teacher_id: string; file_key: string | null }>();
 
   if (!material) return notFound("Material nicht gefunden");
-
   if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
@@ -295,7 +309,6 @@ export async function handleMaterialDownload(
 ): Promise<Response> {
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
-
   if (!env.STORAGE) return serverError("Storage nicht konfiguriert");
 
   const material = await env.DB.prepare(
@@ -360,7 +373,6 @@ export async function handleSetMaterialAccess(
 ): Promise<Response> {
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
-
   if (request.method !== "POST") return methodNotAllowed(["POST"]);
 
   const material = await env.DB.prepare(
@@ -370,7 +382,6 @@ export async function handleSetMaterialAccess(
     .first<{ id: string; teacher_id: string; title: string }>();
 
   if (!material) return notFound("Material nicht gefunden");
-
   if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
@@ -395,8 +406,7 @@ export async function handleSetMaterialAccess(
 
     for (const classId of classIds) {
       await env.DB.prepare(
-        `INSERT INTO material_classes (id, material_id, class_id)
-         VALUES (?, ?, ?)`
+        `INSERT INTO material_classes (id, material_id, class_id) VALUES (?, ?, ?)`
       )
         .bind(uuid(), materialId, classId)
         .run();
@@ -404,8 +414,7 @@ export async function handleSetMaterialAccess(
 
     for (const studentId of studentIds) {
       await env.DB.prepare(
-        `INSERT INTO material_students (id, material_id, student_id)
-         VALUES (?, ?, ?)`
+        `INSERT INTO material_students (id, material_id, student_id) VALUES (?, ?, ?)`
       )
         .bind(uuid(), materialId, studentId)
         .run();
@@ -413,7 +422,6 @@ export async function handleSetMaterialAccess(
 
     try {
       const allStudentIds = new Set<string>();
-
       if (classIds.length > 0) {
         const placeholders = classIds.map(() => "?").join(",");
         const inClasses = await env.DB.prepare(
@@ -421,16 +429,13 @@ export async function handleSetMaterialAccess(
         )
           .bind(...classIds)
           .all<{ student_id: string }>();
-
         for (const s of inClasses.results ?? []) {
           allStudentIds.add(s.student_id);
         }
       }
-
       for (const sid of studentIds) {
         allStudentIds.add(sid);
       }
-
       for (const sid of allStudentIds) {
         await createNotification(
           env,
@@ -463,7 +468,6 @@ export async function handleGetMaterialAccess(
 ): Promise<Response> {
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
-
   if (request.method !== "GET") return methodNotAllowed(["GET"]);
 
   const material = await env.DB.prepare(
@@ -473,7 +477,6 @@ export async function handleGetMaterialAccess(
     .first<{ teacher_id: string }>();
 
   if (!material) return notFound("Material nicht gefunden");
-
   if (ctx.user.role !== "admin" && material.teacher_id !== ctx.user.id) {
     return fail("FORBIDDEN", "Kein Zugriff", 403);
   }
@@ -524,7 +527,6 @@ export async function handleMaterialSubjects(
 ): Promise<Response> {
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
-
   if (request.method !== "GET") return methodNotAllowed(["GET"]);
 
   try {
