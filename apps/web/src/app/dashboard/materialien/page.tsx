@@ -54,7 +54,11 @@ export default function MaterialienPage() {
         subjectId: activeSubject || undefined,
         gradeLevel: activeGrade ?? undefined,
       });
-      setMaterials(data.materials);
+      // Client-seitiger Filter "Nur meine"
+      const filtered = onlyMine && user
+        ? data.materials.filter((m) => m.teacher_id === user.id)
+        : data.materials;
+      setMaterials(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden");
     } finally {
