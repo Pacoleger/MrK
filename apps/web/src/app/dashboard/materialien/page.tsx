@@ -278,4 +278,53 @@ export default function MaterialienPage() {
                     <MaterialCard
                       key={m.id}
                       material={m}
-                      isTeacher
+                      isTeacher={isTeacher}
+                      onDelete={isTeacher ? handleDelete : undefined}
+                      onManageAccess={
+                        isTeacher ? (mat) => setAccessMaterial(mat) : undefined
+                      }
+                      onDownload={handleOpen}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dialoge */}
+      {showUpload && (
+        <MaterialUploadDialog
+          subjects={subjects}
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => {
+            setShowUpload(false);
+            toast.success("Erstellt!", "Material wurde hochgeladen.");
+            load();
+          }}
+        />
+      )}
+
+      {accessMaterial && (
+        <AccessDialog
+          materialId={accessMaterial.id}
+          materialTitle={accessMaterial.title}
+          onClose={() => setAccessMaterial(null)}
+          onSuccess={() => {
+            setAccessMaterial(null);
+            toast.success("Gespeichert!", "Freischaltung wurde aktualisiert.");
+            load();
+          }}
+        />
+      )}
+
+      {viewMaterial && (
+        <MaterialViewer
+          material={viewMaterial}
+          onClose={() => setViewMaterial(null)}
+        />
+      )}
+    </div>
+  );
+}
