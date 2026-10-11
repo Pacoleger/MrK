@@ -17,6 +17,7 @@ export interface Material {
   file_size: number | null;
   url: string | null;
   content: string | null;
+  grade_level: number | null;
   created_at: string;
   updated_at: string;
   subject_name?: string;
@@ -44,13 +45,35 @@ export interface SubjectOption {
 }
 
 // ============================================================
+// Constants
+// ============================================================
+
+export const SUBJECT_LABELS: Record<string, string> = {
+  math: "Mathematik",
+  physics: "Physik",
+  chemistry: "Chemie",
+  biology: "Biologie",
+};
+
+export const SUBJECT_ICONS: Record<string, string> = {
+  math: "📐",
+  physics: "⚛️",
+  chemistry: "🧪",
+  biology: "🧬",
+};
+
+export const GRADE_LEVELS = [7, 8, 9, 10, 11, 12, 13];
+
+// ============================================================
 // Materials API
 // ============================================================
 
 export const materialsApi = {
-  list(params?: { subjectId?: string }) {
+  list(params?: { subjectId?: string; gradeLevel?: number }) {
     const query = new URLSearchParams();
     if (params?.subjectId) query.set("subjectId", params.subjectId);
+    if (params?.gradeLevel !== undefined)
+      query.set("gradeLevel", String(params.gradeLevel));
     const qs = query.toString();
     return apiGet<{ materials: Material[] }>(
       `/api/materials${qs ? `?${qs}` : ""}`
@@ -66,6 +89,7 @@ export const materialsApi = {
     title: string;
     description?: string;
     subjectId: string;
+    gradeLevel: number;
     file?: File;
     url?: string;
     content?: string;
@@ -75,6 +99,7 @@ export const materialsApi = {
     formData.append("title", data.title);
     if (data.description) formData.append("description", data.description);
     formData.append("subjectId", data.subjectId);
+    formData.append("gradeLevel", String(data.gradeLevel));
     if (data.type === "file" && data.file) {
       formData.append("file", data.file);
     }
