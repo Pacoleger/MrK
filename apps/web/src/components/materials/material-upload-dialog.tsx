@@ -14,7 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { materialsApi, type SubjectOption } from "@/lib/materials-api";
+import {
+  materialsApi,
+  GRADE_LEVELS,
+  type SubjectOption,
+} from "@/lib/materials-api";
 import { cn } from "@/lib/utils";
 
 export function MaterialUploadDialog({
@@ -30,6 +34,7 @@ export function MaterialUploadDialog({
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [subjectId, setSubjectId] = React.useState(subjects[0]?.id ?? "");
+  const [gradeLevel, setGradeLevel] = React.useState<number>(7);
   const [file, setFile] = React.useState<File | null>(null);
   const [url, setUrl] = React.useState("");
   const [content, setContent] = React.useState("");
@@ -60,9 +65,11 @@ export function MaterialUploadDialog({
 
     if (!title.trim()) return setError("Titel ist erforderlich");
     if (!subjectId) return setError("Fach ist erforderlich");
+    if (!gradeLevel) return setError("Klasse ist erforderlich");
     if (type === "file" && !file) return setError("Datei ist erforderlich");
     if (type === "link" && !url.trim()) return setError("URL ist erforderlich");
-    if (type === "html" && !content.trim()) return setError("Inhalt ist erforderlich");
+    if (type === "html" && !content.trim())
+      return setError("Inhalt ist erforderlich");
 
     setIsSubmitting(true);
     try {
@@ -71,6 +78,7 @@ export function MaterialUploadDialog({
         title: title.trim(),
         description: description.trim() || undefined,
         subjectId,
+        gradeLevel,
         file: type === "file" ? file! : undefined,
         url: type === "link" ? url.trim() : undefined,
         content: type === "html" ? content.trim() : undefined,
@@ -87,7 +95,7 @@ export function MaterialUploadDialog({
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm grid place-items-center p-4">
       <div className="w-full max-w-2xl bg-card rounded-2xl shadow-2xl border border-border max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold">Neues Material</h2>
           <button
             onClick={onClose}
@@ -105,52 +113,33 @@ export function MaterialUploadDialog({
             </Alert>
           )}
 
-          {/* Type-Auswahl */}
+          {/* Type */}
           <div className="space-y-2">
             <Label>Was möchtest du teilen?</Label>
             <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setType("html")}
-                disabled={isSubmitting}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition",
-                  type === "html"
-                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
-                    : "border-border hover:bg-muted"
-                )}
-              >
-                <BookOpen className="h-4 w-4" />
-                Text / Merkblatt
-              </button>
-              <button
-                type="button"
-                onClick={() => setType("file")}
-                disabled={isSubmitting}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition",
-                  type === "file"
-                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
-                    : "border-border hover:bg-muted"
-                )}
-              >
-                <Upload className="h-4 w-4" />
-                Datei
-              </button>
-              <button
-                type="button"
-                onClick={() => setType("link")}
-                disabled={isSubmitting}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition",
-                  type === "link"
-                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
-                    : "border-border hover:bg-muted"
-                )}
-              >
-                <LinkIcon className="h-4 w-4" />
-                Link
-              </button>
+              {(
+                [
+                  { value: "html", label: "Text", icon: BookOpen },
+                  { value: "file", label: "Datei", icon: Upload },
+                  { value: "link", label: "Link", icon: LinkIcon },
+                ] as const
+              ).map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setType(value)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition",
+                    type === value
+                      ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500"
+                      : "border-border hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -179,43 +168,55 @@ export function MaterialUploadDialog({
             />
           </div>
 
-          {/* Fach */}
-          <div className="space-y-2">
-            <Label htmlFor="subject">Fach</Label>
-            <select
-              id="subject"
-              value={subjectId}
-              onChange={(e) => setSubjectId(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm"
-            >
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name_de}
-                </option>
-              ))}
-            </select>
+          {/* Fach + Klasse */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="subject">Fach</Label>
+              <select
+                id="subject"
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm"
+              >
+                {subjects.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name_de}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="grade">Klasse</Label>
+              <select
+                id="grade"
+                value={gradeLevel}
+                onChange={(e) => setGradeLevel(Number(e.target.value))}
+                disabled={isSubmitting}
+                className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm"
+              >
+                {GRADE_LEVELS.map((g) => (
+                  <option key={g} value={g}>
+                    Klasse {g}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* HTML-Inhalt */}
           {type === "html" && (
             <div className="space-y-2">
-              <Label htmlFor="content">
-                Inhalt (HTML erlaubt)
-              </Label>
+              <Label htmlFor="content">Inhalt (HTML erlaubt)</Label>
               <textarea
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 disabled={isSubmitting}
-                placeholder={"<h2>Überschrift</h2>\n<p>Text mit <strong>Formatierung</strong>.</p>\n<ul><li>Punkt 1</li></ul>"}
+                placeholder={"<h2>Überschrift</h2>\n<p>Text mit <strong>Formatierung</strong>.</p>"}
                 className="w-full min-h-[200px] rounded-lg border border-border bg-card px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 resize-y"
               />
-              <p className="text-xs text-muted-foreground">
-                Tipp: Nutze <code>&lt;h2&gt;</code>, <code>&lt;p&gt;</code>,{" "}
-                <code>&lt;ul&gt;</code>, <code>&lt;code&gt;</code>,{" "}
-                <code>&lt;details&gt;</code> für aufklappbare Lösungen.
-              </p>
             </div>
           )}
 
@@ -272,7 +273,7 @@ export function MaterialUploadDialog({
             </div>
           )}
 
-          {/* Link-Input */}
+          {/* Link */}
           {type === "link" && (
             <div className="space-y-2">
               <Label htmlFor="url">URL</Label>
@@ -289,7 +290,7 @@ export function MaterialUploadDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-border shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Abbrechen
           </Button>
