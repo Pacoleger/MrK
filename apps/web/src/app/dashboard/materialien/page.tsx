@@ -8,6 +8,11 @@ import {
   Inbox,
   Filter,
   User as UserIcon,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Pencil,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MaterialCard } from "@/components/materials/material-card";
@@ -24,6 +29,157 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+// ============================================================
+// Typ-Sortierung (Merkblätter → Übungen → Tests)
+// ============================================================
+
+type GroupType = "merkblatt" | "uebung" | "test" | "other";
+
+const TYPE_META: Record<
+  GroupType,
+  { label: string; singular: string; icon: typeof FileText; color: string }
+> = {
+  merkblatt: {
+    label: "Merkblätter",
+    singular: "Merkblatt",
+    icon: FileText,
+    color: "from-brand-500 to-brand-600",
+  },
+  uebung: {
+    label: "Übungen",
+    singular: "Übung",
+    icon: Pencil,
+    color: "from-accent-500 to-accent-600",
+  },
+  test: {
+    label: "Tests",
+    singular: "Test",
+    icon: FlaskConical,
+    color: "from-red-500 to-orange-500",
+  },
+  other: {
+    label: "Sonstiges",
+    singular: "Material",
+    icon: BookOpen,
+    color: "from-slate-500 to-slate-600",
+  },
+};
+
+const TYPE_ORDER: GroupType[] = ["merkblatt", "uebung", "test", "other"];
+
+/**
+ * Erkennt den Typ eines Materials anhand des Titels.
+ * Nutzt Emojis + Schlüsselwörter.
+ */
+function detectMaterialType(m: Material): GroupType {
+  const title = m.title.toLowerCase();
+
+  // Emojis im Titel (zuverlässigste Erkennung)
+  if (title.includes("📝") || title.includes("📄")) return "merkblatt";
+  if (title.includes("✏️") || title.includes("📝")) return "uebung";
+  if (title.includes("🧪") || title.includes("📊")) return "test";
+
+  // Schlüsselwörter
+  if (title.includes("merkblatt") || title.includes("übersicht") || title.includes("zusammenfassung")) {
+    return "merkblatt";
+  }
+  if (title.includes("übung") || title.includes("aufgabe") || title.includes("training")) {
+    return "uebung";
+  }
+  if (title.includes("test") || title.includes("klausur") || title.includes("prüfung") || title.includes("quiz")) {
+    return "test";
+  }
+
+  return "other";
+}
+
+// ============================================================
+// Klappbarer Bereich
+// ============================================================
+
+function CollapsibleSection({
+  type,
+  materials,
+  isTeacher,
+  onDelete,
+  onManageAccess,
+  onOpen,
+  defaultOpen = true,
+}: {
+  type: GroupType;
+  materials: Material[];
+  isTeacher: boolean;
+  onDelete: (m: Material) => void;
+  onManageAccess: (m: Material) => void;
+  onOpen: (m: Material) => void;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const meta = TYPE_META[type];
+  const Icon = meta.icon;
+
+  return (
+    <div className="rounded-2xl border border-border overflow-hidden bg-card/30">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition text-left"
+      >
+        {/* Chevron */}
+        <span className="shrink-0 text-muted-foreground">
+          {open ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </span>
+
+        {/* Icon */}
+        <span
+          className={cn(
+            "w-8 h-8 rounded-lg bg-gradient-to-br grid place-items-center text-white shrink-0",
+            meta.color
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+
+        {/* Label */}
+        <span className="font-semibold text-sm">{meta.label}</span>
+
+        {/* Count */}
+        <span className="text-xs text-muted-foreground">
+          ({materials.length}{" "}
+          {materials.length === 1 ? meta.singular : ""})
+        </span>
+      </button>
+
+      {/* Content */}
+      {open && (
+        <div className="p-4 pt-2 border-t border-border">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {materials.map((m) => (
+              <MaterialCard
+                key={m.id}
+                material={m}
+                isTeacher={isTeacher}
+                onDelete={isTeacher ? onDelete : undefined}
+                onManageAccess={isTeacher ? onManageAccess : undefined}
+                onDownload={onOpen}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Hauptkomponente
+// ============================================================
 
 export default function MaterialienPage() {
   const { user } = useAuth();
@@ -106,30 +262,41 @@ export default function MaterialienPage() {
     }
   };
 
-  // Gruppierung nach Fach + Klasse
+  // Gruppierung: Fach → Klasse → Typ
   const grouped = React.useMemo(() => {
-    const groups: Record<
+    // 1. Gruppieren nach Fach + Klasse
+    const bySubjectGrade: Record<
       string,
-      { subject: string; grade: number | null; items: Material[] }
+      {
+        subject: string;
+        grade: number | null;
+        byType: Record<GroupType, Material[]>;
+      }
     > = {};
 
     for (const m of materials) {
       const key = `${m.subject_id}__${m.grade_level ?? "none"}`;
-      if (!groups[key]) {
-        groups[key] = {
+      if (!bySubjectGrade[key]) {
+        bySubjectGrade[key] = {
           subject: m.subject_id,
           grade: m.grade_level,
-          items: [],
+          byType: {
+            merkblatt: [],
+            uebung: [],
+            test: [],
+            other: [],
+          },
         };
       }
-      groups[key].items.push(m);
+      const type = detectMaterialType(m);
+      bySubjectGrade[key].byType[type].push(m);
     }
 
-    // Sortieren: nach Fach, dann nach Klasse
-    const order = ["math", "physics", "chemistry", "biology"];
-    return Object.values(groups).sort((a, b) => {
+    // 2. Sortieren nach Fach, dann nach Klasse
+    const subjectOrder = ["math", "physics", "chemistry", "biology"];
+    return Object.values(bySubjectGrade).sort((a, b) => {
       const subjectDiff =
-        order.indexOf(a.subject) - order.indexOf(b.subject);
+        subjectOrder.indexOf(a.subject) - subjectOrder.indexOf(b.subject);
       if (subjectDiff !== 0) return subjectDiff;
       const gradeA = a.grade ?? 999;
       const gradeB = b.grade ?? 999;
@@ -137,7 +304,7 @@ export default function MaterialienPage() {
     });
   }, [materials]);
 
-  // Verfügbare Klassen für Filter-Chips
+  // Verfügbare Klassen
   const availableGrades = React.useMemo(() => {
     const grades = new Set<number>();
     for (const m of materials) {
@@ -169,8 +336,9 @@ export default function MaterialienPage() {
         )}
       </div>
 
-      {/* Fach-Filter */}
+      {/* Filter */}
       <div className="space-y-3">
+        {/* Fach-Filter */}
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <button
@@ -231,7 +399,6 @@ export default function MaterialienPage() {
             </button>
           ))}
 
-          {/* "Nur meine"-Filter */}
           {isTeacher && (
             <button
               onClick={() => setOnlyMine((v) => !v)}
@@ -241,7 +408,6 @@ export default function MaterialienPage() {
                   ? "bg-brand-500 text-white"
                   : "bg-muted hover:bg-muted/70 text-muted-foreground"
               )}
-              title="Nur Materialien anzeigen, die ich erstellt habe"
             >
               <UserIcon className="h-3 w-3" />
               {onlyMine ? "Nur meine ✓" : "Nur meine"}
@@ -272,43 +438,55 @@ export default function MaterialienPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-10">
           {grouped.map((group) => {
-            const Icon = SUBJECT_ICONS[group.subject] ?? "📖";
-            const Label = SUBJECT_LABELS[group.subject] ?? group.subject;
+            const subjectIcon = SUBJECT_ICONS[group.subject] ?? "📖";
+            const subjectLabel =
+              SUBJECT_LABELS[group.subject] ?? group.subject;
             const gradeLabel = group.grade
               ? `Klasse ${group.grade}`
               : "Ohne Klasse";
 
+            // Anzahl aller Materialien dieser Gruppe
+            const totalCount = TYPE_ORDER.reduce(
+              (sum, t) => sum + group.byType[t].length,
+              0
+            );
+
             return (
               <section key={`${group.subject}-${group.grade}`}>
-                {/* Section Header */}
-                <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-border">
-                  <span className="text-2xl">{Icon}</span>
-                  <h2 className="text-xl font-bold">{Label}</h2>
+                {/* Fach/Klassen-Header */}
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-border">
+                  <span className="text-2xl">{subjectIcon}</span>
+                  <h2 className="text-xl font-bold">{subjectLabel}</h2>
                   <span className="text-sm font-medium text-muted-foreground">
                     · {gradeLabel}
                   </span>
                   <span className="text-xs text-muted-foreground ml-auto">
-                    {group.items.length}{" "}
-                    {group.items.length === 1 ? "Material" : "Materialien"}
+                    {totalCount}{" "}
+                    {totalCount === 1 ? "Material" : "Materialien"}
                   </span>
                 </div>
 
-                {/* Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {group.items.map((m) => (
-                    <MaterialCard
-                      key={m.id}
-                      material={m}
-                      isTeacher={isTeacher}
-                      onDelete={isTeacher ? handleDelete : undefined}
-                      onManageAccess={
-                        isTeacher ? (mat) => setAccessMaterial(mat) : undefined
-                      }
-                      onDownload={handleOpen}
-                    />
-                  ))}
+                {/* Typ-Bereiche */}
+                <div className="space-y-4">
+                  {TYPE_ORDER.map((type) => {
+                    const items = group.byType[type];
+                    if (items.length === 0) return null;
+
+                    return (
+                      <CollapsibleSection
+                        key={type}
+                        type={type}
+                        materials={items}
+                        isTeacher={isTeacher}
+                        onDelete={handleDelete}
+                        onManageAccess={(m) => setAccessMaterial(m)}
+                        onOpen={handleOpen}
+                        defaultOpen={true}
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
