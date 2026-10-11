@@ -64,7 +64,7 @@ export default function MaterialienPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeSubject, activeGrade]);
+  }, [activeSubject, activeGrade, onlyMine, user]);
 
   React.useEffect(() => {
     materialsApi
