@@ -15,6 +15,9 @@ import { MaterialViewer } from "@/components/materials/material-viewer";
 import { AccessDialog } from "@/components/materials/access-dialog";
 import {
   materialsApi,
+  SUBJECT_LABELS,
+  SUBJECT_ICONS,
+  GRADE_LEVELS,
   type Material,
   type SubjectOption,
 } from "@/lib/materials-api";
@@ -35,7 +38,10 @@ export default function MaterialienPage() {
     null
   );
   const [viewMaterial, setViewMaterial] = React.useState<Material | null>(null);
+
+  // Filter-State
   const [activeSubject, setActiveSubject] = React.useState<string>("");
+  const [activeGrade, setActiveGrade] = React.useState<number | null>(null);
 
   const isTeacher = user?.role === "teacher" || user?.role === "admin";
 
@@ -45,6 +51,7 @@ export default function MaterialienPage() {
     try {
       const data = await materialsApi.list({
         subjectId: activeSubject || undefined,
+        gradeLevel: activeGrade ?? undefined,
       });
       setMaterials(data.materials);
     } catch (err) {
@@ -52,7 +59,7 @@ export default function MaterialienPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeSubject]);
+  }, [activeSubject, activeGrade]);
 
   React.useEffect(() => {
     materialsApi
@@ -93,6 +100,46 @@ export default function MaterialienPage() {
     }
   };
 
+  // Gruppierung nach Fach + Klasse
+  const grouped = React.useMemo(() => {
+    const groups: Record<
+      string,
+      { subject: string; grade: number | null; items: Material[] }
+    > = {};
+
+    for (const m of materials) {
+      const key = `${m.subject_id}__${m.grade_level ?? "none"}`;
+      if (!groups[key]) {
+        groups[key] = {
+          subject: m.subject_id,
+          grade: m.grade_level,
+          items: [],
+        };
+      }
+      groups[key].items.push(m);
+    }
+
+    // Sortieren: nach Fach, dann nach Klasse
+    const order = ["math", "physics", "chemistry", "biology"];
+    return Object.values(groups).sort((a, b) => {
+      const subjectDiff =
+        order.indexOf(a.subject) - order.indexOf(b.subject);
+      if (subjectDiff !== 0) return subjectDiff;
+      const gradeA = a.grade ?? 999;
+      const gradeB = b.grade ?? 999;
+      return gradeA - gradeB;
+    });
+  }, [materials]);
+
+  // Für Filter-Chips: verfügbare Klassen
+  const availableGrades = React.useMemo(() => {
+    const grades = new Set<number>();
+    for (const m of materials) {
+      if (m.grade_level) grades.add(m.grade_level);
+    }
+    return Array.from(grades).sort((a, b) => a - b);
+  }, [materials]);
+
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
@@ -116,37 +163,71 @@ export default function MaterialienPage() {
         )}
       </div>
 
-      {/* Fächer-Filter */}
-      {subjects.length > 0 && (
+      {/* Fach-Filter */}
+      <div className="space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <button
             onClick={() => setActiveSubject("")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-sm transition",
+              "px-3 py-1.5 rounded-lg text-sm transition font-medium",
               activeSubject === ""
                 ? "bg-brand-500 text-white"
                 : "bg-muted hover:bg-muted/70 text-muted-foreground"
             )}
           >
-            Alle
+            📚 Alle Fächer
           </button>
           {subjects.map((s) => (
             <button
               key={s.id}
               onClick={() => setActiveSubject(s.id)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-sm transition",
+                "px-3 py-1.5 rounded-lg text-sm transition font-medium",
                 activeSubject === s.id
                   ? "bg-brand-500 text-white"
                   : "bg-muted hover:bg-muted/70 text-muted-foreground"
               )}
             >
-              {s.name_de}
+              {SUBJECT_ICONS[s.id] ?? "📖"} {SUBJECT_LABELS[s.id] ?? s.name_de}
             </button>
           ))}
         </div>
-      )}
+
+        {/* Klassen-Filter */}
+        {availableGrades.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap pl-6">
+            <span className="text-xs text-muted-foreground font-medium">
+              Klasse:
+            </span>
+            <button
+              onClick={() => setActiveGrade(null)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-xs transition",
+                activeGrade === null
+                  ? "bg-accent-500 text-white"
+                  : "bg-muted hover:bg-muted/70 text-muted-foreground"
+              )}
+            >
+              Alle
+            </button>
+            {availableGrades.map((g) => (
+              <button
+                key={g}
+                onClick={() => setActiveGrade(g)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs transition",
+                  activeGrade === g
+                    ? "bg-accent-500 text-white"
+                    : "bg-muted hover:bg-muted/70 text-muted-foreground"
+                )}
+              >
+                Kl. {g}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Liste */}
       {isLoading ? (
@@ -168,54 +249,33 @@ export default function MaterialienPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {materials.map((m) => (
-            <MaterialCard
-              key={m.id}
-              material={m}
-              isTeacher={isTeacher}
-              onDelete={isTeacher ? handleDelete : undefined}
-              onManageAccess={
-                isTeacher ? (mat) => setAccessMaterial(mat) : undefined
-              }
-              onDownload={handleOpen}
-            />
-          ))}
-        </div>
-      )}
+        <div className="space-y-8">
+          {grouped.map((group) => {
+            const Icon = SUBJECT_ICONS[group.subject] ?? "📖";
+            const Label = SUBJECT_LABELS[group.subject] ?? group.subject;
+            const gradeLabel = group.grade
+              ? `Klasse ${group.grade}`
+              : "Ohne Klasse";
 
-      {/* Dialoge */}
-      {showUpload && (
-        <MaterialUploadDialog
-          subjects={subjects}
-          onClose={() => setShowUpload(false)}
-          onSuccess={() => {
-            setShowUpload(false);
-            toast.success("Erstellt!", "Material wurde hochgeladen.");
-            load();
-          }}
-        />
-      )}
+            return (
+              <section key={`${group.subject}-${group.grade}`}>
+                {/* Section Header */}
+                <div className="flex items-center gap-3 mb-4 pb-2 border-b-2 border-border">
+                  <span className="text-2xl">{Icon}</span>
+                  <h2 className="text-xl font-bold">{Label}</h2>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    · {gradeLabel}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {group.items.length}{" "}
+                    {group.items.length === 1 ? "Material" : "Materialien"}
+                  </span>
+                </div>
 
-      {accessMaterial && (
-        <AccessDialog
-          materialId={accessMaterial.id}
-          materialTitle={accessMaterial.title}
-          onClose={() => setAccessMaterial(null)}
-          onSuccess={() => {
-            setAccessMaterial(null);
-            toast.success("Gespeichert!", "Freischaltung wurde aktualisiert.");
-            load();
-          }}
-        />
-      )}
-
-      {viewMaterial && (
-        <MaterialViewer
-          material={viewMaterial}
-          onClose={() => setViewMaterial(null)}
-        />
-      )}
-    </div>
-  );
-}
+                {/* Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {group.items.map((m) => (
+                    <MaterialCard
+                      key={m.id}
+                      material={m}
+                      isTeacher
