@@ -12,6 +12,7 @@ import { logActivity } from "../lib/logger";
 import { validateFile, makeFileKey } from "../lib/file-utils";
 import { createNotification } from "../lib/gamification";
 
+
 // ============================================================
 // GET /api/materials — Liste (rollenbasiert)
 // ============================================================
