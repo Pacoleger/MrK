@@ -7,6 +7,7 @@ import {
   Loader2,
   Inbox,
   Filter,
+  User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MaterialCard } from "@/components/materials/material-card";
@@ -17,7 +18,6 @@ import {
   materialsApi,
   SUBJECT_LABELS,
   SUBJECT_ICONS,
-  GRADE_LEVELS,
   type Material,
   type SubjectOption,
 } from "@/lib/materials-api";
@@ -55,9 +55,10 @@ export default function MaterialienPage() {
         gradeLevel: activeGrade ?? undefined,
       });
       // Client-seitiger Filter "Nur meine"
-      const filtered = onlyMine && user
-        ? data.materials.filter((m) => m.teacher_id === user.id)
-        : data.materials;
+      const filtered =
+        onlyMine && user
+          ? data.materials.filter((m) => m.teacher_id === user.id)
+          : data.materials;
       setMaterials(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler beim Laden");
@@ -136,7 +137,7 @@ export default function MaterialienPage() {
     });
   }, [materials]);
 
-  // Für Filter-Chips: verfügbare Klassen
+  // Verfügbare Klassen für Filter-Chips
   const availableGrades = React.useMemo(() => {
     const grades = new Set<number>();
     for (const m of materials) {
@@ -156,7 +157,7 @@ export default function MaterialienPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {isTeacher
-              ? "Lade Materialien hoch und schalte sie für deine Klassen frei."
+              ? "Alle Materialien der Schule – oder filtere nach deinen eigenen."
               : "Deine freigeschalteten Materialien."}
           </p>
         </div>
@@ -199,39 +200,54 @@ export default function MaterialienPage() {
           ))}
         </div>
 
-        {/* Klassen-Filter */}
-        {availableGrades.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap pl-6">
-            <span className="text-xs text-muted-foreground font-medium">
-              Klasse:
-            </span>
+        {/* Klassen-Filter + "Nur meine" */}
+        <div className="flex items-center gap-2 flex-wrap pl-6">
+          <span className="text-xs text-muted-foreground font-medium">
+            Klasse:
+          </span>
+          <button
+            onClick={() => setActiveGrade(null)}
+            className={cn(
+              "px-2.5 py-1 rounded-md text-xs transition",
+              activeGrade === null
+                ? "bg-accent-500 text-white"
+                : "bg-muted hover:bg-muted/70 text-muted-foreground"
+            )}
+          >
+            Alle
+          </button>
+          {availableGrades.map((g) => (
             <button
-              onClick={() => setActiveGrade(null)}
+              key={g}
+              onClick={() => setActiveGrade(g)}
               className={cn(
                 "px-2.5 py-1 rounded-md text-xs transition",
-                activeGrade === null
+                activeGrade === g
                   ? "bg-accent-500 text-white"
                   : "bg-muted hover:bg-muted/70 text-muted-foreground"
               )}
             >
-              Alle
+              Kl. {g}
             </button>
-            {availableGrades.map((g) => (
-              <button
-                key={g}
-                onClick={() => setActiveGrade(g)}
-                className={cn(
-                  "px-2.5 py-1 rounded-md text-xs transition",
-                  activeGrade === g
-                    ? "bg-accent-500 text-white"
-                    : "bg-muted hover:bg-muted/70 text-muted-foreground"
-                )}
-              >
-                Kl. {g}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+
+          {/* "Nur meine"-Filter */}
+          {isTeacher && (
+            <button
+              onClick={() => setOnlyMine((v) => !v)}
+              className={cn(
+                "ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition font-medium",
+                onlyMine
+                  ? "bg-brand-500 text-white"
+                  : "bg-muted hover:bg-muted/70 text-muted-foreground"
+              )}
+              title="Nur Materialien anzeigen, die ich erstellt habe"
+            >
+              <UserIcon className="h-3 w-3" />
+              {onlyMine ? "Nur meine ✓" : "Nur meine"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Liste */}
@@ -248,8 +264,10 @@ export default function MaterialienPage() {
           <Inbox className="h-12 w-12 text-muted-foreground mb-3" />
           <p className="font-medium">Keine Materialien</p>
           <p className="text-sm text-muted-foreground mt-1">
-            {isTeacher
-              ? "Lade dein erstes Material hoch."
+            {onlyMine
+              ? "Du hast noch keine eigenen Materialien erstellt."
+              : isTeacher
+              ? "Es sind noch keine Materialien vorhanden."
               : "Aktuell sind keine Materialien freigeschaltet."}
           </p>
         </div>
