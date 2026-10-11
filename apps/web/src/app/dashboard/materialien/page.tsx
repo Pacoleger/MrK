@@ -42,6 +42,7 @@ export default function MaterialienPage() {
   // Filter-State
   const [activeSubject, setActiveSubject] = React.useState<string>("");
   const [activeGrade, setActiveGrade] = React.useState<number | null>(null);
+  const [onlyMine, setOnlyMine] = React.useState(false);
 
   const isTeacher = user?.role === "teacher" || user?.role === "admin";
 
