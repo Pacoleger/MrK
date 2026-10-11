@@ -78,6 +78,7 @@ import {
   handleClassStudents,
   handlePublicClasses,
 } from "./routes/classes";
+
 // Welle 8: Materials
 import {
   handleMaterials,
@@ -88,6 +89,7 @@ import {
   handleGetMaterialAccess,
   handleMaterialSubjects,
 } from "./routes/materials";
+
 // ============================================================
 // Router-Helper
 // ============================================================
@@ -125,7 +127,7 @@ async function route(
   if (path === "/" || path === "/api") {
     return ok({
       name: "MrK API",
-      version: "0.7.0",
+      version: "0.8.0",
       environment: env.ENVIRONMENT,
       endpoints: [
         "GET    /api/health",
@@ -179,6 +181,7 @@ async function route(
         "DELETE /api/admin/classes/:classId/students/:studentId",
         "POST   /api/admin/classes/:id/homeroom",
         "GET    /api/admin/teachers",
+        "GET    /api/admin/subjects",
         "GET    /api/admin/school-years",
         "POST   /api/admin/school-years",
         // Chat
@@ -187,6 +190,14 @@ async function route(
         "GET    /api/chat/conversations/:id/messages",
         "POST   /api/chat/conversations/:id/messages",
         "GET    /api/chat/users",
+        // Materials
+        "GET    /api/materials",
+        "POST   /api/materials/create",
+        "GET    /api/materials/subjects",
+        "GET    /api/materials/:id/download",
+        "GET    /api/materials/:id/access",
+        "POST   /api/materials/:id/access",
+        "DELETE /api/materials/:id",
       ],
       timestamp: new Date().toISOString(),
     });
@@ -319,6 +330,48 @@ async function route(
   }
 
   // ============================================================
+  // Materials
+  // ⚠️  WICHTIG: /materials/create MUSS VOR /materials/:id kommen!
+  // ============================================================
+  if (path === "/api/materials" && method === "GET") {
+    return handleMaterials(request, env);
+  }
+
+  // POST /api/materials/create (multipart)
+  if (path === "/api/materials/create" && method === "POST") {
+    return handleCreateMaterial(request, env);
+  }
+
+  if (path === "/api/materials/subjects" && method === "GET") {
+    return handleMaterialSubjects(request, env);
+  }
+
+  {
+    // /api/materials/:id/download
+    const mDownload = matchPath("/api/materials/:id/download", path);
+    if (mDownload && method === "GET") {
+      return handleMaterialDownload(request, env, mDownload.id);
+    }
+
+    // /api/materials/:id/access
+    const mAccess = matchPath("/api/materials/:id/access", path);
+    if (mAccess) {
+      if (method === "GET") {
+        return handleGetMaterialAccess(request, env, mAccess.id);
+      }
+      if (method === "POST") {
+        return handleSetMaterialAccess(request, env, mAccess.id);
+      }
+    }
+
+    // /api/materials/:id (DELETE)
+    const mDelete = matchPath("/api/materials/:id", path);
+    if (mDelete && method === "DELETE") {
+      return handleDeleteMaterial(request, env, mDelete.id);
+    }
+  }
+
+  // ============================================================
   // Admin
   // ============================================================
   if (path === "/api/admin/stats") return handleAdminStats(request, env);
@@ -411,38 +464,7 @@ async function route(
   }
 
   if (path === "/api/chat/users") return handleChatUsers(request, env);
-  // ============================================================
-  // Materials
-  // ============================================================
-  if (path === "/api/materials") return handleMaterials(request, env);
 
-  if (path === "/api/materials/subjects") 
-    return handleMaterialSubjects(request, env);
-
-  {
-    const mDownload = matchPath("/api/materials/:id/download", path);
-    if (mDownload) 
-      return handleMaterialDownload(request, env, mDownload.id);
-
-    const mAccess = matchPath("/api/materials/:id/access", path);
-    if (mAccess) {
-      if (method === "GET") 
-        return handleGetMaterialAccess(request, env, mAccess.id);
-      if (method === "POST") 
-        return handleSetMaterialAccess(request, env, mAccess.id);
-    }
-
-    const m = matchPath("/api/materials/:id", path);
-    if (m) {
-      if (method === "DELETE") 
-        return handleDeleteMaterial(request, env, m.id);
-    }
-  }
-
-  // POST /api/materials/create (multipart)
-  if (path === "/api/materials/create" && method === "POST") {
-    return handleCreateMaterial(request, env);
-  }
   // ============================================================
   // 404
   // ============================================================
