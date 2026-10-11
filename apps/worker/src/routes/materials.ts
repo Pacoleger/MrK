@@ -12,9 +12,8 @@ import { logActivity } from "../lib/logger";
 import { validateFile, makeFileKey } from "../lib/file-utils";
 import { createNotification } from "../lib/gamification";
 
-
 // ============================================================
-// GET /api/materials — Liste (rollenbasiert)
+// GET /api/materials
 // ============================================================
 
 export async function handleMaterials(
@@ -24,46 +23,55 @@ export async function handleMaterials(
   const ctx = await requireAuth(request, env);
   if (isAuthError(ctx)) return ctx;
 
-  if (request.method === "GET") return listMaterials(request, env, ctx);
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
 
-  return methodNotAllowed(["GET"]);
-}
-
-async function listMaterials(
-  request: Request,
-  env: Env,
-  ctx: { user: { id: string; role: string } }
-): Promise<Response> {
   const url = new URL(request.url);
   const subjectId = url.searchParams.get("subjectId");
 
   try {
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      const query = `
-        SELECT m.*, s.name_de AS subject_name,
-               u.first_name AS teacher_first, u.last_name AS teacher_last,
-               (SELECT COUNT(*) FROM material_classes WHERE material_id = m.id) AS class_count,
-               (SELECT COUNT(*) FROM material_students WHERE material_id = m.id) AS student_count
+      // ---- LEHRER: Eigene Materialien ----
+      let query = `
+        SELECT 
+          m.id, m.teacher_id, m.subject_id, m.title, m.description, m.type,
+          m.file_key, m.file_name, m.file_type, m.file_size, m.url, m.content,
+          m.created_at, m.updated_at,
+          s.name_de AS subject_name,
+          u.first_name AS teacher_first, 
+          u.last_name AS teacher_last,
+          (SELECT COUNT(*) FROM material_classes WHERE material_id = m.id) AS class_count,
+          (SELECT COUNT(*) FROM material_students WHERE material_id = m.id) AS student_count
         FROM materials m
-        JOIN subjects s ON s.id = m.subject_id
-        JOIN users u ON u.id = m.teacher_id
+        LEFT JOIN subjects s ON s.id = m.subject_id
+        LEFT JOIN users u ON u.id = m.teacher_id
         WHERE m.teacher_id = ?
-          ${subjectId ? "AND m.subject_id = ?" : ""}
-        ORDER BY m.created_at DESC
       `;
       const params: string[] = [ctx.user.id];
-      if (subjectId) params.push(subjectId);
+
+      if (subjectId) {
+        query += " AND m.subject_id = ?";
+        params.push(subjectId);
+      }
+
+      query += " ORDER BY m.created_at DESC";
 
       const result = await env.DB.prepare(query).bind(...params).all();
+      console.log(`[listMaterials] Teacher ${ctx.user.id}: ${result.results?.length ?? 0} materials`);
       return ok({ materials: result.results ?? [] });
     }
 
-    const query = `
-      SELECT DISTINCT m.*, s.name_de AS subject_name,
-             u.first_name AS teacher_first, u.last_name AS teacher_last
+    // ---- SCHÜLER: Freigeschaltete Materialien ----
+    let query = `
+      SELECT 
+        m.id, m.teacher_id, m.subject_id, m.title, m.description, m.type,
+        m.file_key, m.file_name, m.file_type, m.file_size, m.url, m.content,
+        m.created_at, m.updated_at,
+        s.name_de AS subject_name,
+        u.first_name AS teacher_first, 
+        u.last_name AS teacher_last
       FROM materials m
-      JOIN subjects s ON s.id = m.subject_id
-      JOIN users u ON u.id = m.teacher_id
+      LEFT JOIN subjects s ON s.id = m.subject_id
+      LEFT JOIN users u ON u.id = m.teacher_id
       WHERE (
         EXISTS (
           SELECT 1 FROM material_classes mc
@@ -75,22 +83,31 @@ async function listMaterials(
           WHERE ms.material_id = m.id AND ms.student_id = ?
         )
       )
-      ${subjectId ? "AND m.subject_id = ?" : ""}
-      ORDER BY m.created_at DESC
     `;
     const params: string[] = [ctx.user.id, ctx.user.id];
-    if (subjectId) params.push(subjectId);
+
+    if (subjectId) {
+      query += " AND m.subject_id = ?";
+      params.push(subjectId);
+    }
+
+    query += " ORDER BY m.created_at DESC";
 
     const result = await env.DB.prepare(query).bind(...params).all();
+    console.log(`[listMaterials] Student ${ctx.user.id}: ${result.results?.length ?? 0} materials`);
     return ok({ materials: result.results ?? [] });
   } catch (err) {
     console.error("listMaterials error:", err);
-    return serverError();
+    return fail(
+      "DB_ERROR",
+      err instanceof Error ? err.message : "Datenbankfehler",
+      500
+    );
   }
 }
 
 // ============================================================
-// POST /api/materials/create — Material erstellen (multipart/form-data)
+// POST /api/materials/create
 // ============================================================
 
 export async function handleCreateMaterial(
