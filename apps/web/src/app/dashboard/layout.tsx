@@ -64,8 +64,8 @@ export default function DashboardLayout({
   return (
     <ProtectedRoute>
       <div className="min-h-screen flex bg-background">
-        {/* Desktop-Sidebar */}
-        <aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card">
+        {/* Desktop-Sidebar – wird auf Mobile komplett versteckt */}
+        <aside className="hidden lg:flex lg:w-64 lg:flex-col border-r border-border bg-card">
           <div className="p-4 border-b border-border">
             <Link href="/" className="flex items-center gap-2 font-bold">
               <Image
@@ -142,8 +142,8 @@ export default function DashboardLayout({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <header className="h-16 border-b border-border bg-background/70 backdrop-blur sticky top-0 z-30 flex items-center px-3 sm:px-6 gap-2 sm:gap-3">
-            {/* Mobile: Hamburger + Logo */}
-            <div className="lg:hidden flex items-center gap-1">
+            {/* Mobile: Hamburger + Logo (immer sichtbar auf Mobile) */}
+            <div className="flex lg:hidden items-center gap-2">
               <MobileNav />
               <Link href="/" className="flex items-center">
                 <Image
