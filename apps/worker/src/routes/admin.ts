@@ -86,13 +86,12 @@ export async function handleAdminUsers(
   const url = new URL(request.url);
   const role = url.searchParams.get("role");
   const search = url.searchParams.get("q");
-const pendingOnly = url.searchParams.get("pending") === "1";
-// … in der Query:
-if (pendingOnly) query += " AND is_approved = 0";
+  const pendingOnly = url.searchParams.get("pending") === "1";
+
   try {
     let query = `
       SELECT id, email, first_name, last_name, role, avatar_url, is_active,
-             locale, last_login_at, created_at
+             is_approved, locale, last_login_at, created_at
       FROM users
       WHERE 1=1
     `;
@@ -103,6 +102,10 @@ if (pendingOnly) query += " AND is_approved = 0";
       params.push(role);
     }
 
+    if (pendingOnly) {
+      query += " AND is_approved = 0";
+    }
+
     if (search) {
       query += " AND (email LIKE ? OR first_name LIKE ? OR last_name LIKE ?)";
       const pattern = `%${search}%`;
@@ -110,6 +113,14 @@ if (pendingOnly) query += " AND is_approved = 0";
     }
 
     query += " ORDER BY created_at DESC LIMIT 500";
+
+    const result = await env.DB.prepare(query).bind(...params).all();
+    return ok({ users: result.results ?? [] });
+  } catch (err) {
+    console.error("adminUsers error:", err);
+    return serverError();
+  }
+}
 
     const result = await env.DB.prepare(query).bind(...params).all();
     return ok({ users: result.results ?? [] });
