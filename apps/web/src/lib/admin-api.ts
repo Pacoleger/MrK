@@ -22,6 +22,7 @@ export interface AdminUser {
   role: "admin" | "teacher" | "student";
   avatar_url: string | null;
   is_active: number;
+  is_approved?: number;
   locale: string;
   last_login_at: string | null;
   created_at: string;
@@ -119,6 +120,18 @@ export const adminApi = {
     });
   },
 
+  // ---- Lehrer-Freischaltung ----
+  pendingTeachers() {
+    return apiGet<{ users: AdminUser[] }>(
+      "/api/admin/users?role=teacher&pending=1"
+    );
+  },
+
+  approveTeacher(id: string) {
+    return apiPost<{ message: string }>(`/api/admin/users/${id}/approve`);
+  },
+
+  // ---- Klassen ----
   classes() {
     return apiGet<{ classes: AdminClass[] }>("/api/admin/classes");
   },
@@ -168,20 +181,8 @@ export const adminApi = {
       { teacherId }
     );
   },
-// In adminApi-Objekt ergänzen:
-pendingTeachers() {
-  return apiGet<{ users: AdminUser[] }>(
-    "/api/admin/users?role=teacher&pending=1"
-  );
-},
 
-approveTeacher(id: string) {
-  return apiPost<{ message: string }>(`/api/admin/users/${id}/approve`);
-},
-  // ============================================================
-  // Subject Assignment (NEU)
-  // ============================================================
-
+  // ---- Fächer-Zuweisung ----
   addClassSubject(classId: string, subjectId: string, teacherId: string) {
     return apiPost<{ message: string }>(
       `/api/admin/classes/${classId}/subjects`,
@@ -207,14 +208,7 @@ approveTeacher(id: string) {
   schoolYears() {
     return apiGet<{ schoolYears: SchoolYear[] }>("/api/admin/school-years");
   },
-// In adminApi-Objekt:
-pendingTeachers() {
-  return apiGet<{ users: AdminUser[] }>("/api/admin/users?role=teacher&pending=1");
-},
 
-approveTeacher(id: string) {
-  return apiPost<{ message: string }>(`/api/admin/users/${id}/approve`);
-},
   createSchoolYear(data: {
     name: string;
     startDate: string;
