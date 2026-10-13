@@ -80,8 +80,7 @@
 /* Verhindert Body-Scroll wenn Modal/Drawer offen */
 body.modal-open {
   overflow: hidden;
-  position: fixed;
-  width: 100%;
+  overscroll-behavior: none;
 }
 
 /* Verbessertes Tap-Feedback auf Touch-Geräten */
