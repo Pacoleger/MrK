@@ -10,6 +10,14 @@ import { handleLogin } from "./routes/auth/login";
 import { handleLogout } from "./routes/auth/logout";
 import { handleMe } from "./routes/auth/me";
 
+
+import {
+  handleAdminStats,
+  handleAdminUsers,
+  handleAdminUpdateUser,
+  handleApproveTeacher,  // ← neu
+  // … rest
+} from "./routes/admin";
 // Welle 6: Assignments, Submissions, Uploads
 import {
   handleAssignments,
