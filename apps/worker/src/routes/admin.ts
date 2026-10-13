@@ -86,7 +86,9 @@ export async function handleAdminUsers(
   const url = new URL(request.url);
   const role = url.searchParams.get("role");
   const search = url.searchParams.get("q");
-
+const pendingOnly = url.searchParams.get("pending") === "1";
+// … in der Query:
+if (pendingOnly) query += " AND is_approved = 0";
   try {
     let query = `
       SELECT id, email, first_name, last_name, role, avatar_url, is_active,
