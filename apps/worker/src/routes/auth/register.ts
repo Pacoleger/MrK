@@ -154,25 +154,16 @@ export async function handleRegister(
   }
 
   // --- JWT erzeugen ---
-  const token = await signJwt(
-    { sub: user.id, email: user.email, role: user.role },
-    env.JWT_SECRET
-  );
-
-  // --- Activity log ---
+// --- Lehrer: keine Session, warten auf Freischaltung ---
+if (user.role === "teacher") {
   await logActivity(env, {
     userId: user.id,
-    action: "login",
-    metadata: {
-      method: "register",
-      classId: classId ?? undefined,
-      subjects: validSubjects.length > 0 ? validSubjects : undefined,
-    },
+    action: "register",
+    metadata: { method: "register", pendingApproval: true },
     request,
   });
 
-  // --- Response mit Cookie ---
-  const response = ok({
+  return ok({
     user: {
       id: user.id,
       email: user.email,
@@ -181,10 +172,40 @@ export async function handleRegister(
       role: user.role,
       locale: user.locale,
     },
-    token,
-    classAssigned: !!classId,
-    subjects: validSubjects,
+    pendingApproval: true,
+    message:
+      "Registrierung erfolgreich. Dein Konto muss noch von einem Administrator freigeschaltet werden.",
   });
+}
 
-  return withAuthCookie(response, token);
+// --- Schüler: direkt einloggen ---
+const token = await signJwt(
+  { sub: user.id, email: user.email, role: user.role },
+  env.JWT_SECRET
+);
+
+await logActivity(env, {
+  userId: user.id,
+  action: "login",
+  metadata: {
+    method: "register",
+    classId: classId ?? undefined,
+  },
+  request,
+});
+
+const response = ok({
+  user: {
+    id: user.id,
+    email: user.email,
+    firstName: user.first_name,
+    lastName: user.last_name,
+    role: user.role,
+    locale: user.locale,
+  },
+  token,
+  classAssigned: !!classId,
+});
+
+return withAuthCookie(response, token);
 }
