@@ -10,77 +10,28 @@ import {
   GraduationCap,
   CheckCircle2,
   XCircle,
+  UserCheck,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { adminApi, type AdminUser } from "@/lib/admin-api";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-export default function AdminUsersPage() {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = React.useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState("");
-  const [roleFilter, setRoleFilter] = React.useState<string>("");
+// ============================================================
+// Ausstehende Lehrer (Freischalten)
+// ============================================================
 
-  "use client";
-
-import * as React from "react";
-import { CheckCircle2, UserCheck, Loader2, Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { adminApi, type AdminUser } from "@/lib/admin-api";
-import { useToast } from "@/hooks/use-toast";
-import { PendingTeachersSection } from "./pending-teachers-section";
-// oder direkt in derselben Datei definieren
-
-// …
-
-return (
-  <div className="space-y-6">
-    <PendingTeachersSection />
-    {/* dein bestehender Benutzer-Bereich */}
-  </div>
-);
-export function PendingTeachersSection() {
+function PendingTeachersSection() {
   const toast = useToast();
   const [teachers, setTeachers] = React.useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [approvingId, setApprovingId] = React.useState<string | null>(null);
 
-  const load = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await adminApi.users({
-        q: search || undefined,
-        role: roleFilter || undefined,
-      });
-      setUsers(data.users);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, roleFilter]);
-
-  React.useEffect(() => {
-    const timer = setTimeout(load, 300);
-    return () => clearTimeout(timer);
-  }, [load]);
-
-  const handleUpdateRole = async (userId: string, role: string) => {
-    try {
-      await adminApi.updateUser(userId, { role });
-      await load();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Fehler");
-    }
-  };
   const load = React.useCallback(async () => {
     setIsLoading(true);
     try {
@@ -126,7 +77,7 @@ export function PendingTeachersSection() {
     );
   }
 
-  if (teachers.length === 0) return null; // Nichts anzeigen, wenn niemand wartet
+  if (teachers.length === 0) return null;
 
   return (
     <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/10">
@@ -178,6 +129,49 @@ export function PendingTeachersSection() {
     </Card>
   );
 }
+
+// ============================================================
+// Hauptseite
+// ============================================================
+
+export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = React.useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
+  const [roleFilter, setRoleFilter] = React.useState<string>("");
+
+  const load = React.useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await adminApi.users({
+        q: search || undefined,
+        role: roleFilter || undefined,
+      });
+      setUsers(data.users);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fehler");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [search, roleFilter]);
+
+  React.useEffect(() => {
+    const timer = setTimeout(load, 300);
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  const handleUpdateRole = async (userId: string, role: string) => {
+    try {
+      await adminApi.updateUser(userId, { role });
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Fehler");
+    }
+  };
+
   const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
       await adminApi.updateUser(userId, { isActive });
@@ -189,6 +183,9 @@ export function PendingTeachersSection() {
 
   return (
     <div className="space-y-6 max-w-6xl">
+      {/* Ausstehende Lehrer zuerst */}
+      <PendingTeachersSection />
+
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Users className="h-6 w-6 text-brand-500" />
@@ -315,7 +312,6 @@ function UserRow({
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
 
-           {/* Actions */}
           <div className="flex items-center gap-2 sm:shrink-0">
             <select
               value={user.role}
