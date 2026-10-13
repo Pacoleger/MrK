@@ -198,7 +198,14 @@ export const adminApi = {
   schoolYears() {
     return apiGet<{ schoolYears: SchoolYear[] }>("/api/admin/school-years");
   },
+// In adminApi-Objekt:
+pendingTeachers() {
+  return apiGet<{ users: AdminUser[] }>("/api/admin/users?role=teacher&pending=1");
+},
 
+approveTeacher(id: string) {
+  return apiPost<{ message: string }>(`/api/admin/users/${id}/approve`);
+},
   createSchoolYear(data: {
     name: string;
     startDate: string;
