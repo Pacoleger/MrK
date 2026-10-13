@@ -118,86 +118,63 @@ export async function handleAdminUsers(
 }
 
 // ============================================================
-// PATCH /api/admin/users/:id
+// POST /api/admin/users/:id/approve
 // ============================================================
 
-export async function handleAdminUpdateUser(
+export async function handleApproveTeacher(
   request: Request,
   env: Env,
   userId: string
 ): Promise<Response> {
-  const ctx = await requireAdmin(request, env);
-  if (ctx instanceof Response) return ctx;
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
 
-  if (request.method !== "PATCH" && request.method !== "POST") {
-    return methodNotAllowed(["PATCH", "POST"]);
-  }
+  const roleErr = requireRole(ctx as never, ["admin"]);
+  if (roleErr) return roleErr;
 
-  let body: { role?: string; isActive?: boolean };
-  try {
-    body = await request.json();
-  } catch {
-    return fail("INVALID_JSON", "Ungültiger Body", 400);
-  }
+  if (request.method !== "POST") return methodNotAllowed(["POST"]);
 
-  const user = await env.DB.prepare("SELECT id, role FROM users WHERE id = ?")
+  // User laden
+  const user = await env.DB.prepare(
+    "SELECT id, role, is_approved FROM users WHERE id = ?"
+  )
     .bind(userId)
-    .first<{ id: string; role: string }>();
+    .first<{ id: string; role: string; is_approved: number }>();
 
   if (!user) return notFound("Benutzer nicht gefunden");
-
-  if (userId === ctx.user.id && body.isActive === false) {
-    return fail("CANNOT_DEACTIVATE_SELF", "Du kannst dich nicht selbst deaktivieren", 400);
+  if (user.role !== "teacher") {
+    return fail(
+      "NOT_A_TEACHER",
+      "Nur Lehrer können freigeschaltet werden",
+      400
+    );
   }
 
-  if (userId === ctx.user.id && body.role && body.role !== "admin") {
-    return fail("CANNOT_DEMOTE_SELF", "Du kannst dich nicht selbst degradieren", 400);
+  if (user.is_approved === 1) {
+    return ok({ message: "Benutzer ist bereits freigeschaltet" });
   }
 
-  const updates: string[] = [];
-  const params: unknown[] = [];
+  await env.DB.prepare(
+    "UPDATE users SET is_approved = 1, updated_at = datetime('now') WHERE id = ?"
+  )
+    .bind(userId)
+    .run();
 
-  if (body.role) {
-    if (!["admin", "teacher", "student"].includes(body.role)) {
-      return fail("INVALID_ROLE", "Ungültige Rolle", 400);
-    }
-    updates.push("role = ?");
-    params.push(body.role);
-  }
-
-  if (body.isActive !== undefined) {
-    updates.push("is_active = ?");
-    params.push(body.isActive ? 1 : 0);
-  }
-
-  if (updates.length === 0) {
-    return fail("NO_UPDATES", "Keine Änderungen", 400);
-  }
-
-  updates.push("updated_at = datetime('now')");
-  params.push(userId);
-
+  // Optional: Notification
   try {
-    await env.DB.prepare(
-      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`
-    )
-      .bind(...params)
-      .run();
+    await createNotification(
+      env,
+      userId,
+      "system",
+      "Konto freigeschaltet",
+      "Du kannst dich jetzt einloggen.",
+      "/login"
+    );
   } catch (err) {
-    console.error("adminUpdateUser error:", err);
-    return serverError("Update fehlgeschlagen");
+    console.error("Approve notification failed:", err);
   }
 
-  await logActivity(env, {
-    userId: ctx.user.id,
-    action: "admin_action",
-    targetType: "user",
-    targetId: userId,
-    metadata: body as Record<string, unknown>,
-    request,
-  });
-
-  return ok({ message: "Benutzer aktualisiert" });
+  return ok({ message: "Lehrer freigeschaltet" });
 }
 
 // ============================================================
