@@ -74,6 +74,16 @@ export async function handleLogin(
     .bind(user.id)
     .run();
 
+
+  // Nach: const user = ... und Passwort-Verifikation
+
+if (user.role === "teacher" && user.is_approved !== 1) {
+  return fail(
+    "PENDING_APPROVAL",
+    "Dein Lehrer-Konto wurde noch nicht freigeschaltet. Bitte wende dich an einen Administrator.",
+    403
+  );
+}
   // --- JWT erzeugen ---
   const token = await signJwt(
     { sub: user.id, email: user.email, role: user.role },
