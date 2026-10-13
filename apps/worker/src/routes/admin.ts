@@ -3,7 +3,7 @@ import { ok, fail, methodNotAllowed, notFound, serverError } from "../lib/respon
 import { uuid } from "../lib/crypto";
 import { requireAuth, isAuthError, requireRole } from "../middleware/auth";
 import { logActivity } from "../lib/logger";
-
+import { methodNotAllowed } from "../lib/response";
 // ============================================================
 // Admin: Middleware
 // ============================================================
