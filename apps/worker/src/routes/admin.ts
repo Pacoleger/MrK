@@ -1,9 +1,9 @@
-import type { Env, DbUser } from "../types";
+import type { Env } from "../types";
 import { ok, fail, methodNotAllowed, notFound, serverError } from "../lib/response";
 import { uuid } from "../lib/crypto";
 import { requireAuth, isAuthError, requireRole } from "../middleware/auth";
 import { logActivity } from "../lib/logger";
-import { methodNotAllowed } from "../lib/response";
+import { createNotification } from "../lib/gamification";
 // ============================================================
 // Admin: Middleware
 // ============================================================
