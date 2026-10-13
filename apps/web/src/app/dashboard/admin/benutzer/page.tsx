@@ -23,36 +23,33 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // ============================================================
-// Ausstehende Lehrer (Freischalten)
+// Ausstehende Lehrer
 // ============================================================
 
 function PendingTeachersSection() {
   const toast = useToast();
   const [teachers, setTeachers] = React.useState<AdminUser[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [approvingId, setApprovingId] = React.useState<string | null>(null);
+  const [state, setState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
 
   const load = React.useCallback(async () => {
-    setIsLoading(true);
+    setState("loading");
     try {
       const data = await adminApi.pendingTeachers();
-      setTeachers(data.users);
-    } catch (err) {
-      toast.error(
-        "Fehler",
-        err instanceof Error ? err.message : "Konnte nicht laden"
-      );
-    } finally {
-      setIsLoading(false);
+      setTeachers(data.users ?? []);
+      setState("ready");
+    } catch {
+      setTeachers([]);
+      setState("error");
     }
-  }, [toast]);
+  }, []);
 
   React.useEffect(() => {
     load();
   }, [load]);
 
   const handleApprove = async (id: string) => {
-    setApprovingId(id);
     try {
       await adminApi.approveTeacher(id);
       toast.success("Freigeschaltet", "Der Lehrer kann sich jetzt einloggen.");
@@ -62,22 +59,22 @@ function PendingTeachersSection() {
         "Fehler",
         err instanceof Error ? err.message : "Freischaltung fehlgeschlagen"
       );
-    } finally {
-      setApprovingId(null);
     }
   };
 
-  if (isLoading) {
+  // Fehler oder niemand wartet → Bereich ausblenden
+  if (state === "error" || teachers.length === 0) return null;
+
+  if (state === "loading") {
     return (
       <Card>
-        <CardContent className="p-6 grid place-items-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <CardContent className="p-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Lade ausstehende Lehrer…
         </CardContent>
       </Card>
     );
   }
-
-  if (teachers.length === 0) return null;
 
   return (
     <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/10">
@@ -89,12 +86,10 @@ function PendingTeachersSection() {
             {teachers.length}
           </Badge>
         </div>
-
         <p className="text-sm text-muted-foreground">
           Diese Lehrer warten auf Freischaltung. Nach der Freigabe können sie
           sich einloggen.
         </p>
-
         <div className="divide-y divide-border rounded-lg border border-border bg-card">
           {teachers.map((t) => (
             <div key={t.id} className="flex items-center gap-3 p-3">
@@ -110,16 +105,8 @@ function PendingTeachersSection() {
                   {t.email}
                 </p>
               </div>
-              <Button
-                size="sm"
-                onClick={() => handleApprove(t.id)}
-                disabled={approvingId === t.id}
-              >
-                {approvingId === t.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <UserCheck className="h-3.5 w-3.5" />
-                )}
+              <Button size="sm" onClick={() => handleApprove(t.id)}>
+                <UserCheck className="h-3.5 w-3.5" />
                 Freischalten
               </Button>
             </div>
@@ -159,9 +146,12 @@ export default function AdminUsersPage() {
   }, [search, roleFilter]);
 
   React.useEffect(() => {
-    const timer = setTimeout(load, 300);
+    const timer = setTimeout(() => {
+      load();
+    }, 300);
     return () => clearTimeout(timer);
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, roleFilter]);
 
   const handleUpdateRole = async (userId: string, role: string) => {
     try {
