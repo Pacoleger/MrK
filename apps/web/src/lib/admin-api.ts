@@ -168,7 +168,16 @@ export const adminApi = {
       { teacherId }
     );
   },
+// In adminApi-Objekt ergänzen:
+pendingTeachers() {
+  return apiGet<{ users: AdminUser[] }>(
+    "/api/admin/users?role=teacher&pending=1"
+  );
+},
 
+approveTeacher(id: string) {
+  return apiPost<{ message: string }>(`/api/admin/users/${id}/approve`);
+},
   // ============================================================
   // Subject Assignment (NEU)
   // ============================================================
