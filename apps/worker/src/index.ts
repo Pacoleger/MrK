@@ -381,7 +381,10 @@ async function route(
     const m = matchPath("/api/admin/users/:id", path);
     if (m) return handleAdminUpdateUser(request, env, m.id);
   }
-
+  {
+    const m = matchPath("/api/admin/users/:id/approve", path);
+    if (m) return handleApproveTeacher(request, env, m.id);
+  }
   if (path === "/api/admin/classes") return handleAdminClasses(request, env);
 
   // Class-spezifische Routen
