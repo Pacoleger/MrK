@@ -120,7 +120,8 @@ export async function handleRegister(
         body.firstName.trim(),
         body.lastName.trim(),
         body.role,
-        locale
+        locale,
+        isApproved
       )
       .run();
   } catch (err) {
