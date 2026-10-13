@@ -26,6 +26,32 @@ export default function AdminUsersPage() {
   const [search, setSearch] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState<string>("");
 
+  "use client";
+
+import * as React from "react";
+import { CheckCircle2, UserCheck, Loader2, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { adminApi, type AdminUser } from "@/lib/admin-api";
+import { useToast } from "@/hooks/use-toast";
+import { PendingTeachersSection } from "./pending-teachers-section";
+// oder direkt in derselben Datei definieren
+
+// …
+
+return (
+  <div className="space-y-6">
+    <PendingTeachersSection />
+    {/* dein bestehender Benutzer-Bereich */}
+  </div>
+);
+export function PendingTeachersSection() {
+  const toast = useToast();
+  const [teachers, setTeachers] = React.useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [approvingId, setApprovingId] = React.useState<string | null>(null);
+
   const load = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -55,7 +81,103 @@ export default function AdminUsersPage() {
       alert(err instanceof Error ? err.message : "Fehler");
     }
   };
+  const load = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await adminApi.pendingTeachers();
+      setTeachers(data.users);
+    } catch (err) {
+      toast.error(
+        "Fehler",
+        err instanceof Error ? err.message : "Konnte nicht laden"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleApprove = async (id: string) => {
+    setApprovingId(id);
+    try {
+      await adminApi.approveTeacher(id);
+      toast.success("Freigeschaltet", "Der Lehrer kann sich jetzt einloggen.");
+      await load();
+    } catch (err) {
+      toast.error(
+        "Fehler",
+        err instanceof Error ? err.message : "Freischaltung fehlgeschlagen"
+      );
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 grid place-items-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (teachers.length === 0) return null; // Nichts anzeigen, wenn niemand wartet
+
+  return (
+    <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/10">
+      <CardContent className="p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-amber-600" />
+          <h2 className="font-semibold text-base">Ausstehende Lehrer</h2>
+          <Badge variant="secondary" className="ml-auto">
+            {teachers.length}
+          </Badge>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Diese Lehrer warten auf Freischaltung. Nach der Freigabe können sie
+          sich einloggen.
+        </p>
+
+        <div className="divide-y divide-border rounded-lg border border-border bg-card">
+          {teachers.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 p-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 grid place-items-center text-white text-xs font-bold shrink-0">
+                {t.first_name?.charAt(0)}
+                {t.last_name?.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {t.first_name} {t.last_name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {t.email}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => handleApprove(t.id)}
+                disabled={approvingId === t.id}
+              >
+                {approvingId === t.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <UserCheck className="h-3.5 w-3.5" />
+                )}
+                Freischalten
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
   const handleToggleActive = async (userId: string, isActive: boolean) => {
     try {
       await adminApi.updateUser(userId, { isActive });
