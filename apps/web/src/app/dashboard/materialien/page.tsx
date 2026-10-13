@@ -75,12 +75,19 @@ const TYPE_ORDER: GroupType[] = ["merkblatt", "uebung", "test", "other"];
 function detectMaterialType(m: Material): GroupType {
   const title = m.title.toLowerCase();
 
-  // Emojis im Titel (zuverlässigste Erkennung)
-  if (title.includes("📝") || title.includes("📄")) return "merkblatt";
-  if (title.includes("✏️") || title.includes("📝")) return "uebung";
-  if (title.includes("🧪") || title.includes("📊")) return "test";
+  // Emojis zuerst (eindeutig)
+  if (title.includes("🧪")) return "test";
+  if (title.includes("✏️")) return "uebung";
+  if (
+    title.includes("📝") ||
+    title.includes("📄") ||
+    title.includes("📊") ||   // 📊 = Merkblatt (nicht Test!)
+    title.includes("📖")
+  ) {
+    return "merkblatt";
+  }
 
-  // Schlüsselwörter
+  // Schlüsselwörter (Fallback)
   if (title.includes("merkblatt") || title.includes("übersicht") || title.includes("zusammenfassung")) {
     return "merkblatt";
   }
