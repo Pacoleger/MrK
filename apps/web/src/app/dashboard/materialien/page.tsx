@@ -112,7 +112,7 @@ function CollapsibleSection({
   onDelete,
   onManageAccess,
   onOpen,
-  defaultOpen = true,
+  defaultOpen = false,
 }: {
   type: GroupType;
   materials: Material[];
