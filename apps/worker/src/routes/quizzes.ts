@@ -412,7 +412,29 @@ export async function handleStartQuizAttempt(
 
   if (!quiz) return notFound("Quiz nicht gefunden");
   if (!quiz.is_published) return fail("NOT_PUBLISHED", "Quiz ist nicht veröffentlicht", 403);
+  // Schüler: nur zugeteilte Quizze startbar
+  const assigned = await env.DB.prepare(
+    `SELECT 1 FROM quiz_assignments qa
+     LEFT JOIN class_students cs
+       ON cs.class_id = qa.class_id AND cs.student_id = ?
+     WHERE qa.quiz_id = ?
+       AND qa.is_active = 1
+       AND (
+         qa.student_id = ?
+         OR (qa.class_id IS NOT NULL AND cs.student_id IS NOT NULL)
+       )
+     LIMIT 1`
+  )
+    .bind(ctx.user.id, quizId, ctx.user.id)
+    .first();
 
+  if (!assigned) {
+    return fail(
+      "NOT_ASSIGNED",
+      "Dieses Quiz wurde dir nicht zugeteilt.",
+      403
+    );
+  }
   // Prüfe ob schon ein Versuch läuft
   const existing = await env.DB.prepare(
     "SELECT * FROM quiz_attempts WHERE quiz_id = ? AND student_id = ?"
