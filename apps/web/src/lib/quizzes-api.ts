@@ -75,6 +75,24 @@ export const quizzesApi = {
       message: string;
     }>(`/api/quiz-attempts/${attemptId}/submit`);
   },
+    assign(quizId: string, data: {
+    classIds?: string[];
+    studentIds?: string[];
+    dueDate?: string;
+  }) {
+    return apiPost<{ message: string }>(
+      `/api/quizzes/${quizId}/assign`,
+      data
+    );
+  },
+
+  assignments(quizId: string) {
+    return apiGet<{
+      classIds: string[];
+      studentIds: string[];
+      dueDate: string | null;
+    }>(`/api/quizzes/${quizId}/assignments`);
+  },
 };
 
 interface QuizQuestionWithAnswer {
