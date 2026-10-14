@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "worker/**"
+      - "apps/worker/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -31,13 +31,13 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Verify worker folder
-        run: ls -la worker
+        run: ls -la apps/worker
 
       - name: Deploy Worker to Cloudflare
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: worker
+          workingDirectory: apps/worker
           command: deploy
           packageManager: pnpm
