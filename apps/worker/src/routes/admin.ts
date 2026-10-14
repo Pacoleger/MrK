@@ -4,6 +4,7 @@ import { uuid } from "../lib/crypto";
 import { requireAuth, isAuthError, requireRole } from "../middleware/auth";
 import { logActivity } from "../lib/logger";
 import { createNotification } from "../lib/gamification";
+
 // ============================================================
 // Admin: Middleware
 // ============================================================
@@ -122,6 +123,99 @@ export async function handleAdminUsers(
   }
 }
 
+// ============================================================
+// PATCH /api/admin/users/:id
+// Body: { role?: string; isActive?: boolean }
+// ============================================================
+
+export async function handleAdminUpdateUser(
+  request: Request,
+  env: Env,
+  userId: string
+): Promise<Response> {
+  const ctx = await requireAdmin(request, env);
+  if (ctx instanceof Response) return ctx;
+
+  if (request.method !== "PATCH") return methodNotAllowed(["PATCH"]);
+
+  let body: { role?: string; isActive?: boolean };
+  try {
+    body = await request.json();
+  } catch {
+    return fail("INVALID_JSON", "Ungültiger Body", 400);
+  }
+
+  const user = await env.DB.prepare(
+    "SELECT id, role FROM users WHERE id = ?"
+  )
+    .bind(userId)
+    .first<{ id: string; role: string }>();
+
+  if (!user) return notFound("Benutzer nicht gefunden");
+
+  if (user.id === ctx.user.id) {
+    if (body.role && body.role !== "admin") {
+      return fail(
+        "SELF_DEMOTE",
+        "Du kannst deine eigene Admin-Rolle nicht entziehen",
+        400
+      );
+    }
+    if (body.isActive === false) {
+      return fail(
+        "SELF_DEACTIVATE",
+        "Du kannst dein eigenes Konto nicht deaktivieren",
+        400
+      );
+    }
+  }
+
+  const updates: string[] = [];
+  const params: unknown[] = [];
+
+  if (body.role && ["admin", "teacher", "student"].includes(body.role)) {
+    updates.push("role = ?");
+    params.push(body.role);
+  }
+
+  if (typeof body.isActive === "boolean") {
+    updates.push("is_active = ?");
+    params.push(body.isActive ? 1 : 0);
+  }
+
+  if (updates.length === 0) {
+    return fail("NOTHING_TO_UPDATE", "Keine Änderungen angegeben", 400);
+  }
+
+  updates.push("updated_at = datetime('now')");
+  params.push(userId);
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`
+    )
+      .bind(...params)
+      .run();
+  } catch (err) {
+    console.error("adminUpdateUser error:", err);
+    return serverError("Benutzer konnte nicht aktualisiert werden");
+  }
+
+  await logActivity(env, {
+    userId: ctx.user.id,
+    action: "admin_action",
+    targetType: "user",
+    targetId: userId,
+    metadata: {
+      action: "update_user",
+      role: body.role,
+      isActive: body.isActive,
+    },
+    request,
+  });
+
+  return ok({ message: "Benutzer aktualisiert" });
+}
 
 // ============================================================
 // POST /api/admin/users/:id/approve
@@ -140,7 +234,6 @@ export async function handleApproveTeacher(
 
   if (request.method !== "POST") return methodNotAllowed(["POST"]);
 
-  // User laden
   const user = await env.DB.prepare(
     "SELECT id, role, is_approved FROM users WHERE id = ?"
   )
@@ -166,7 +259,6 @@ export async function handleApproveTeacher(
     .bind(userId)
     .run();
 
-  // Optional: Notification
   try {
     await createNotification(
       env,
@@ -566,8 +658,7 @@ export async function handleSetHomeroomTeacher(
 }
 
 // ============================================================
-// POST /api/admin/classes/:classId/subjects — Fach-Lehrer-Zuweisung
-// Body: { subjectId: string, teacherId: string }
+// POST /api/admin/classes/:classId/subjects
 // ============================================================
 
 export async function handleAddClassSubject(
@@ -590,19 +681,16 @@ export async function handleAddClassSubject(
   if (!body.subjectId) return fail("SUBJECT_REQUIRED", "subjectId fehlt", 400);
   if (!body.teacherId) return fail("TEACHER_REQUIRED", "teacherId fehlt", 400);
 
-  // Prüfe Klasse
   const cls = await env.DB.prepare("SELECT id FROM classes WHERE id = ?")
     .bind(classId)
     .first<{ id: string }>();
   if (!cls) return notFound("Klasse nicht gefunden");
 
-  // Prüfe Fach
   const subject = await env.DB.prepare("SELECT id FROM subjects WHERE id = ?")
     .bind(body.subjectId)
     .first<{ id: string }>();
   if (!subject) return notFound("Fach nicht gefunden");
 
-  // Prüfe Lehrer
   const teacher = await env.DB.prepare(
     "SELECT id FROM users WHERE id = ? AND role IN ('teacher', 'admin')"
   )
@@ -610,7 +698,6 @@ export async function handleAddClassSubject(
     .first<{ id: string }>();
   if (!teacher) return notFound("Lehrer nicht gefunden");
 
-  // Prüfe nicht schon vorhanden
   const existing = await env.DB.prepare(
     "SELECT id FROM class_subjects WHERE class_id = ? AND subject_id = ?"
   )
@@ -619,14 +706,12 @@ export async function handleAddClassSubject(
 
   try {
     if (existing) {
-      // Update Teacher
       await env.DB.prepare(
         "UPDATE class_subjects SET teacher_id = ? WHERE id = ?"
       )
         .bind(body.teacherId, existing.id)
         .run();
     } else {
-      // Insert
       await env.DB.prepare(
         `INSERT INTO class_subjects (id, class_id, subject_id, teacher_id)
          VALUES (?, ?, ?, ?)`
@@ -713,7 +798,7 @@ export async function handleAdminTeachers(
 }
 
 // ============================================================
-// GET /api/admin/subjects — Alle Fächer
+// GET /api/admin/subjects
 // ============================================================
 
 export async function handleAdminSubjects(
