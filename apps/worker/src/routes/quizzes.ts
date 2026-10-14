@@ -67,29 +67,48 @@ async function listQuizzes(
 ): Promise<Response> {
   const url = new URL(request.url);
   const classId = url.searchParams.get("classId");
+  const onlyMine = url.searchParams.get("mine") === "1";
 
   try {
+    // ============================================================
+    // LEHRER / ADMIN
+    // ============================================================
     if (ctx.user.role === "teacher" || ctx.user.role === "admin") {
-      const query = `
+      let query = `
         SELECT q.*, s.name_de AS subject_name, c.name AS class_name,
-               (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) AS question_count
+               u.first_name AS teacher_first, u.last_name AS teacher_last,
+               (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) AS question_count,
+               (SELECT COUNT(*) FROM quiz_assignments WHERE quiz_id = q.id) AS assignment_count
         FROM quizzes q
         JOIN subjects s ON s.id = q.subject_id
         JOIN classes c ON c.id = q.class_id
-        WHERE q.teacher_id = ? ${classId ? "AND q.class_id = ?" : ""}
-        ORDER BY q.created_at DESC
+        LEFT JOIN users u ON u.id = q.teacher_id
+        WHERE 1=1
       `;
-      const params: string[] = [ctx.user.id];
-      if (classId) params.push(classId);
+      const params: string[] = [];
+
+      if (onlyMine) {
+        query += " AND q.teacher_id = ?";
+        params.push(ctx.user.id);
+      }
+      if (classId) {
+        query += " AND q.class_id = ?";
+        params.push(classId);
+      }
+
+      query += " ORDER BY q.created_at DESC";
 
       const result = await env.DB.prepare(query).bind(...params).all();
       return ok({ quizzes: result.results ?? [] });
     }
 
-    // Schüler
+    // ============================================================
+    // SCHÜLER — nur zugeteilte Quizze
+    // ============================================================
     const query = `
       SELECT q.*, s.name_de AS subject_name, c.name AS class_name,
              (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) AS question_count,
+             qa.due_date,
              a.status AS attempt_status,
              a.score AS attempt_score,
              a.max_score AS attempt_max_score,
@@ -98,13 +117,18 @@ async function listQuizzes(
       FROM quizzes q
       JOIN subjects s ON s.id = q.subject_id
       JOIN classes c ON c.id = q.class_id
-      JOIN class_students cs ON cs.class_id = q.class_id AND cs.student_id = ?
+      JOIN quiz_assignments qa ON qa.quiz_id = q.id AND qa.is_active = 1
+      LEFT JOIN class_students cs ON cs.class_id = qa.class_id AND cs.student_id = ?
       LEFT JOIN quiz_attempts a ON a.quiz_id = q.id AND a.student_id = ?
       WHERE q.is_published = 1
+        AND (
+          qa.student_id = ?
+          OR (qa.class_id IS NOT NULL AND cs.student_id IS NOT NULL)
+        )
       ORDER BY q.created_at DESC
     `;
     const result = await env.DB.prepare(query)
-      .bind(ctx.user.id, ctx.user.id)
+      .bind(ctx.user.id, ctx.user.id, ctx.user.id)
       .all();
 
     return ok({ quizzes: result.results ?? [] });
