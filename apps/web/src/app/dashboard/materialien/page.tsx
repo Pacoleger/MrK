@@ -490,7 +490,7 @@ export default function MaterialienPage() {
                         onDelete={handleDelete}
                         onManageAccess={(m) => setAccessMaterial(m)}
                         onOpen={handleOpen}
-                        defaultOpen={true}
+                        defaultOpen={false}
                       />
                     );
                   })}
