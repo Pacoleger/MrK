@@ -287,7 +287,13 @@ async function route(
     if (mStartQuiz)
       return handleStartQuizAttempt(request, env, mStartQuiz.id);
   }
+  {
+    const mAssign = matchPath("/api/quizzes/:id/assign", path);
+    if (mAssign) return handleAssignQuiz(request, env, mAssign.id);
 
+    const mGetAssign = matchPath("/api/quizzes/:id/assignments", path);
+    if (mGetAssign) return handleGetQuizAssignments(request, env, mGetAssign.id);
+  }
   // Quiz Attempts
   {
     const mAnswer = matchPath("/api/quiz-attempts/:id/answer", path);
