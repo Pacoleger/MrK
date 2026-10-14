@@ -717,3 +717,154 @@ function normalizeText(text: string): string {
     .replace(/ß/g, "ss")
     .replace(/\s+/g, " ");
 }
+// ============================================================
+// POST /api/quizzes/:id/assign
+// Body: { classIds?: string[]; studentIds?: string[]; dueDate?: string }
+// ============================================================
+
+export async function handleAssignQuiz(
+  request: Request,
+  env: Env,
+  quizId: string
+): Promise<Response> {
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
+
+  const roleErr = requireRole(ctx as never, ["teacher", "admin"]);
+  if (roleErr) return roleErr;
+
+  if (request.method !== "POST") return methodNotAllowed(["POST"]);
+
+  const quiz = await env.DB.prepare(
+    "SELECT id, teacher_id, title FROM quizzes WHERE id = ?"
+  )
+    .bind(quizId)
+    .first<{ id: string; teacher_id: string; title: string }>();
+
+  if (!quiz) return notFound("Quiz nicht gefunden");
+
+  if (ctx.user.role !== "admin" && quiz.teacher_id !== ctx.user.id) {
+    return fail("FORBIDDEN", "Nur der Ersteller darf zuweisen", 403);
+  }
+
+  let body: { classIds?: string[]; studentIds?: string[]; dueDate?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return fail("INVALID_JSON", "Ungültiger Body", 400);
+  }
+
+  const classIds = body.classIds ?? [];
+  const studentIds = body.studentIds ?? [];
+  const dueDate = body.dueDate || null;
+
+  try {
+    // Vorhandene Zuteilungen dieses Quiz entfernen (einfacher Reset)
+    await env.DB.prepare(
+      "DELETE FROM quiz_assignments WHERE quiz_id = ?"
+    )
+      .bind(quizId)
+      .run();
+
+    // Klassen zuweisen
+    for (const classId of classIds) {
+      await env.DB.prepare(
+        `INSERT INTO quiz_assignments
+          (id, quiz_id, class_id, student_id, assigned_by, due_date)
+         VALUES (?, ?, ?, NULL, ?, ?)`
+      )
+        .bind(uuid(), quizId, classId, ctx.user.id, dueDate)
+        .run();
+    }
+
+    // Einzelne Schüler zuweisen
+    for (const studentId of studentIds) {
+      await env.DB.prepare(
+        `INSERT INTO quiz_assignments
+          (id, quiz_id, class_id, student_id, assigned_by, due_date)
+         VALUES (?, ?, NULL, ?, ?, ?)`
+      )
+        .bind(uuid(), quizId, studentId, ctx.user.id, dueDate)
+        .run();
+    }
+
+    // Benachrichtigungen an alle betroffenen Schüler
+    const allStudentIds = new Set<string>();
+
+    if (classIds.length > 0) {
+      const placeholders = classIds.map(() => "?").join(",");
+      const inClasses = await env.DB.prepare(
+        `SELECT DISTINCT student_id FROM class_students
+         WHERE class_id IN (${placeholders})`
+      )
+        .bind(...classIds)
+        .all<{ student_id: string }>();
+
+      for (const s of inClasses.results ?? []) {
+        allStudentIds.add(s.student_id);
+      }
+    }
+    for (const sid of studentIds) allStudentIds.add(sid);
+
+    for (const sid of allStudentIds) {
+      await createNotification(
+        env,
+        sid,
+        "new_assignment",
+        "Neues Quiz zugeteilt",
+        quiz.title,
+        `/dashboard/quiz/detail?id=${quizId}`
+      );
+    }
+  } catch (err) {
+    console.error("handleAssignQuiz error:", err);
+    return serverError("Zuteilung fehlgeschlagen");
+  }
+
+  return ok({ message: "Quiz zugeteilt" });
+}
+
+// ============================================================
+// GET /api/quizzes/:id/assignments — aktuelle Zuteilungen
+// ============================================================
+
+export async function handleGetQuizAssignments(
+  request: Request,
+  env: Env,
+  quizId: string
+): Promise<Response> {
+  const ctx = await requireAuth(request, env);
+  if (isAuthError(ctx)) return ctx;
+
+  const roleErr = requireRole(ctx as never, ["teacher", "admin"]);
+  if (roleErr) return roleErr;
+
+  if (request.method !== "GET") return methodNotAllowed(["GET"]);
+
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT id, class_id, student_id, due_date, assigned_at
+       FROM quiz_assignments
+       WHERE quiz_id = ? AND is_active = 1`
+    )
+      .bind(quizId)
+      .all();
+
+    const classIds = (rows.results ?? [])
+      .map((r) => (r as { class_id: string | null }).class_id)
+      .filter((x): x is string => !!x);
+
+    const studentIds = (rows.results ?? [])
+      .map((r) => (r as { student_id: string | null }).student_id)
+      .filter((x): x is string => !!x);
+
+    const dueDate = (rows.results ?? [])
+      .map((r) => (r as { due_date: string | null }).due_date)
+      .find((x): x is string => !!x) ?? null;
+
+    return ok({ classIds, studentIds, dueDate });
+  } catch (err) {
+    console.error("handleGetQuizAssignments error:", err);
+    return serverError();
+  }
+}
