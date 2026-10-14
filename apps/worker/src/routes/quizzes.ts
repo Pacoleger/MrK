@@ -307,13 +307,29 @@ export async function handleQuizDetail(
 
   // Zugriffsprüfung für Schüler
   if (ctx.user.role === "student") {
-    const enrolled = await env.DB.prepare(
-      "SELECT id FROM class_students WHERE class_id = ? AND student_id = ?"
+    const classId = (quiz as { class_id: string }).class_id;
+    const assigned = await env.DB.prepare(
+      `SELECT 1 FROM quiz_assignments qa
+       LEFT JOIN class_students cs
+         ON cs.class_id = qa.class_id AND cs.student_id = ?
+       WHERE qa.quiz_id = ?
+         AND qa.is_active = 1
+         AND (
+           qa.student_id = ?
+           OR (qa.class_id IS NOT NULL AND cs.student_id IS NOT NULL)
+         )
+       LIMIT 1`
     )
-      .bind((quiz as { class_id: string }).class_id, ctx.user.id)
-      .first<{ id: string }>();
+      .bind(ctx.user.id, quizId, ctx.user.id)
+      .first();
 
-    if (!enrolled) return fail("FORBIDDEN", "Nicht in dieser Klasse", 403);
+    if (!assigned) {
+      return fail(
+        "NOT_ASSIGNED",
+        "Dieses Quiz wurde dir nicht zugeteilt.",
+        403
+      );
+    }
   }
 
   // Fragen laden
