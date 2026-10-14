@@ -122,13 +122,6 @@ export async function handleAdminUsers(
   }
 }
 
-    const result = await env.DB.prepare(query).bind(...params).all();
-    return ok({ users: result.results ?? [] });
-  } catch (err) {
-    console.error("adminUsers error:", err);
-    return serverError();
-  }
-}
 
 // ============================================================
 // POST /api/admin/users/:id/approve
