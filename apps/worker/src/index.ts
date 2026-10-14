@@ -35,6 +35,8 @@ import {
   handleStartQuizAttempt,
   handleSaveQuizAnswer,
   handleSubmitQuizAttempt,
+  handleAssignQuiz,            // ← neu
+  handleGetQuizAssignments,    // ← neu
 } from "./routes/quizzes";
 
 // Welle 7c: Admin
