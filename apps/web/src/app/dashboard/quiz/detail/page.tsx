@@ -5,9 +5,11 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, UserCheck } from "lucide-react";
 import { QuizPlayer } from "@/components/quiz/quiz-player";
 import { QuizResult } from "@/components/quiz/quiz-result";
+import { QuizAssignDialog } from "@/components/quiz/quiz-assign-dialog";
+import { Button } from "@/components/ui/button";
 import { quizzesApi } from "@/lib/quizzes-api";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
@@ -37,8 +39,10 @@ function QuizDetailInner() {
   const { user } = useAuth();
 
   const [state, setState] = React.useState<ScreenState>({ kind: "loading" });
+  const [showAssign, setShowAssign] = React.useState(false);
 
   const isStudent = user?.role === "student";
+  const isTeacher = user?.role === "teacher" || user?.role === "admin";
 
   const load = React.useCallback(async () => {
     if (!id) {
@@ -60,7 +64,7 @@ function QuizDetailInner() {
           score: data.attempt.score,
           maxScore: data.attempt.max_score,
           percentage: data.attempt.percentage,
-          starsEarned: 0, // TODO: aus Log
+          starsEarned: 0,
           timeSpentSec: data.attempt.time_spent_sec,
         });
         return;
@@ -99,7 +103,10 @@ function QuizDetailInner() {
     } catch (err) {
       setState({
         kind: "error",
-        message: err instanceof ApiError ? err.message : "Quiz konnte nicht geladen werden",
+        message:
+          err instanceof ApiError
+            ? err.message
+            : "Quiz konnte nicht geladen werden",
       });
     }
   }, [id, isStudent]);
@@ -145,7 +152,9 @@ function QuizDetailInner() {
     );
   }
 
-  // Lehrer-Ansicht: Quiz ohne Player
+  // ============================================================
+  // Lehrer-Ansicht: Quiz + Zuweisungs-Button
+  // ============================================================
   if (!isStudent) {
     return (
       <div className="max-w-3xl space-y-6">
@@ -158,15 +167,26 @@ function QuizDetailInner() {
         </Link>
 
         <div className="rounded-xl border border-border bg-card p-6">
-          <h1 className="text-2xl font-bold">{state.quiz.title}</h1>
-          {state.quiz.description && (
-            <p className="text-sm text-muted-foreground mt-2">
-              {state.quiz.description}
-            </p>
-          )}
-          <p className="text-sm text-muted-foreground mt-4">
-            {state.questions.length} Fragen
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold">{state.quiz.title}</h1>
+              {state.quiz.description && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {state.quiz.description}
+                </p>
+              )}
+              <p className="text-sm text-muted-foreground mt-4">
+                {state.questions.length} Fragen
+              </p>
+            </div>
+
+            {isTeacher && (
+              <Button onClick={() => setShowAssign(true)}>
+                <UserCheck className="h-4 w-4" />
+                Zuweisen
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -192,11 +212,22 @@ function QuizDetailInner() {
             </div>
           ))}
         </div>
+
+        {showAssign && (
+          <QuizAssignDialog
+            quizId={state.quiz.id}
+            quizTitle={state.quiz.title}
+            onClose={() => setShowAssign(false)}
+            onSuccess={() => setShowAssign(false)}
+          />
+        )}
       </div>
     );
   }
 
+  // ============================================================
   // Schüler: Quiz spielen
+  // ============================================================
   if (!state.attempt) {
     return (
       <div className="max-w-3xl space-y-4">
@@ -215,7 +246,6 @@ function QuizDetailInner() {
       questions={state.questions}
       attempt={currentAttempt}
       onFinish={(result) => {
-        // Direkt Ergebnis anzeigen (statt neu laden)
         setState({
           kind: "result",
           score: result.score,
