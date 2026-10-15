@@ -3,12 +3,7 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  ArrowLeftRight,
-  CheckCircle2,
-  Circle,
-  ListChecks,
-} from "lucide-react";
+import { ArrowLeftRight, Circle } from "lucide-react";
 import type { QuizQuestion } from "@/lib/quiz-types";
 
 // ============================================================
@@ -46,14 +41,6 @@ export function QuestionRenderer({
         />
       );
     case "short_answer":
-      return (
-        <ShortAnswerQuestion
-          question={question}
-          answer={answer}
-          onAnswer={onAnswer}
-          disabled={disabled}
-        />
-      );
     case "fill_blank":
       return (
         <ShortAnswerQuestion
@@ -90,7 +77,26 @@ function MultipleChoiceQuestion({
   onAnswer: (answer: unknown) => void;
   disabled?: boolean;
 }) {
-  const options = Array.isArray(question.options) ? question.options : [];
+  // options kann Array sein ODER (theoretisch) JSON-String
+  let options: string[] = [];
+  if (Array.isArray(question.options)) {
+    options = question.options as string[];
+  } else if (typeof question.options === "string") {
+    try {
+      const parsed = JSON.parse(question.options);
+      if (Array.isArray(parsed)) options = parsed;
+    } catch {
+      options = [];
+    }
+  }
+
+  if (options.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        (Diese Frage hat keine Antwortoptionen.)
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -143,9 +149,10 @@ function TrueFalseQuestion({
   onAnswer: (answer: unknown) => void;
   disabled?: boolean;
 }) {
-  const options = Array.isArray(question.options)
-    ? question.options
-    : ["Wahr", "Falsch"];
+  let options: string[] = ["Wahr", "Falsch"];
+  if (Array.isArray(question.options) && question.options.length === 2) {
+    options = question.options as string[];
+  }
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -199,7 +206,7 @@ function ShortAnswerQuestion({
         autoComplete="off"
       />
       <p className="text-xs text-muted-foreground">
-        Groß-/Kleinschreibung wird nicht unterschieden.
+        Groß-/Kleinschreibung und Umlaute werden nicht unterschieden.
       </p>
     </div>
   );
@@ -220,36 +227,21 @@ function MatchingQuestion({
   onAnswer: (answer: unknown) => void;
   disabled?: boolean;
 }) {
-  // question.options ist ein Array von "linken" Werten
-  const leftItems = Array.isArray(question.options) ? question.options : [];
+  // options kann sein:
+  //  - { left: [...], right: [...] }   ← neue Form (mit Dropdowns)
+  //  - string[]                          ← alte Form (Fallback: nur linke Werte)
+  let leftItems: string[] = [];
+  let rightItems: string[] = [];
 
-  // Der Schüler wählt für jedes linke Element ein rechtes aus.
-  // Rechte Optionen = alle linken Werte, aber wir mischen sie NICHT —
-  // der Nutzer ordnet zu, indem er für jede "linke" Position ein "rechtes" auswählt.
-  // Da wir keinen Zugriff auf die "rechten" Werte in der Frage haben (die sind correct_answer),
-  // müssen wir tricksen: Bei matching speichern wir die rechten Werte
-  // auch in question.options als zweites Element? Nein.
-  //
-  // Deshalb: Wir senden beim Quiz-Detail-Request die "rechten" Werte separat.
-  // Für jetzt nutzen wir einen Trick: Die Rechten sind in `question.options` als
- // zweites Array? Nein, zu komplex.
-  //
-  // Einfacher Ansatz: Beim Erstellen wird `options` = [left1, left2, ...] und
-  // `correct_answer` = {left1: right1, ...}. Der Schüler muss für jede Linke
-  // einen Wert aus der Liste der Rechten wählen. Wir zeigen die rechten Werte
-  // aber NICHT (das würde die Lösung verraten).
-  //
-  // Deshalb: Wir zeigen nur die linken Werte + ein Dropdown/Select mit ALLEN
-  // rechten Werten (die wir aus correct_answer des Schülers kennen — nein, wir haben sie nicht).
-  //
-  // PRAKTISCHE LÖSUNG: Der Schüler bekommt die rechten Werte als shuffle-Optionen.
-  // Wir müssen sie also beim Quiz-Detail-Request mitsenden (aber NICHT die Zuordnung).
-  //
-  // Für jetzt: Fallback — wir zeigen nur die linken Items, der Schüler gibt
-  // für jedes eine kurze Antwort ein (Text-Input). Das ist weniger elegant,
-  // aber funktioniert.
-  //
-  // TODO: Backend so erweitern, dass es `options` = {left: [...], right: [...]} sendet.
+  const opts = question.options as unknown;
+  if (opts && typeof opts === "object" && !Array.isArray(opts)) {
+    const o = opts as { left?: string[]; right?: string[] };
+    leftItems = Array.isArray(o.left) ? o.left : [];
+    rightItems = Array.isArray(o.right) ? o.right : [];
+  } else if (Array.isArray(opts)) {
+    leftItems = opts as string[];
+    rightItems = [];
+  }
 
   const currentAnswer = (answer as Record<string, string>) ?? {};
 
@@ -258,26 +250,77 @@ function MatchingQuestion({
     onAnswer({ ...currentAnswer, [left]: value });
   };
 
+  if (leftItems.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground italic">
+        (Diese Zuordnungs-Frage hat keine Elemente.)
+      </p>
+    );
+  }
+
+  // Wenn rechte Werte fehlen → Fallback: Text-Input
+  if (rightItems.length === 0) {
+    return (
+      <div className="space-y-3">
+        {leftItems.map((leftItem, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20"
+          >
+            <div className="flex-1 font-medium text-sm">{leftItem}</div>
+            <ArrowLeftRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Input
+              value={currentAnswer[leftItem] ?? ""}
+              onChange={(e) => handleChange(leftItem, e.target.value)}
+              placeholder="Zuordnung..."
+              disabled={disabled}
+              className="flex-1"
+            />
+          </div>
+        ))}
+        <p className="text-xs text-muted-foreground">
+          Schreibe die Zuordnung zu jedem Begriff.
+        </p>
+      </div>
+    );
+  }
+
+  // Volle Matching-Ansicht mit Dropdown
   return (
     <div className="space-y-3">
-      {leftItems.map((leftItem, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20"
-        >
-          <div className="flex-1 font-medium text-sm">{leftItem}</div>
-          <ArrowLeftRight className="h-4 w-4 text-muted-foreground shrink-0" />
-          <Input
-            value={currentAnswer[leftItem] ?? ""}
-            onChange={(e) => handleChange(leftItem, e.target.value)}
-            placeholder="Zuordnung..."
-            disabled={disabled}
-            className="flex-1"
-          />
-        </div>
-      ))}
+      {leftItems.map((leftItem, i) => {
+        const selected = currentAnswer[leftItem] ?? "";
+        return (
+          <div
+            key={i}
+            className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border border-border bg-muted/20"
+          >
+            <div className="flex-1 font-medium text-sm">{leftItem}</div>
+            <ArrowLeftRight className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+            <select
+              value={selected}
+              onChange={(e) => handleChange(leftItem, e.target.value)}
+              disabled={disabled}
+              className={cn(
+                "flex-1 h-10 rounded-lg border-2 bg-card px-3 text-sm transition",
+                selected
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                  : "border-border",
+                disabled && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              <option value="">– auswählen –</option>
+              {rightItems.map((right, ri) => (
+                <option key={ri} value={right}>
+                  {right}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
       <p className="text-xs text-muted-foreground">
-        Schreibe die Zuordnung zu jedem Begriff.
+        Wähle für jeden Begriff die passende Zuordnung.
       </p>
     </div>
   );
