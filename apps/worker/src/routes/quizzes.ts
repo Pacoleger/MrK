@@ -345,9 +345,38 @@ export async function handleQuizDetail(
   let safeQuestions = questions.results ?? [];
 
   if (ctx.user.role === "student") {
-    // Schüler bekommt keine correct_answer
     safeQuestions = (questions.results ?? []).map((q) => {
-      const { correct_answer, ...rest } = q as Record<string, unknown>;
+      const record = q as Record<string, unknown>;
+      const { correct_answer, ...rest } = record;
+
+      // options parsen (falls als String)
+      let options: unknown = rest.options;
+      if (typeof options === "string") {
+        try { options = JSON.parse(options); } catch { options = null; }
+      }
+
+      let correct: unknown = correct_answer;
+      if (typeof correct === "string") {
+        try { correct = JSON.parse(correct); } catch { /* bleibt String */ }
+      }
+
+      // Matching: rechte Werte mischen und mitsenden (ohne Zuordnung)
+      if (record.type === "matching" && correct && typeof correct === "object") {
+        const rightValues = Object.values(correct as Record<string, string>);
+        // Fisher-Yates Shuffle
+        const shuffled = [...rightValues];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        rest.options = {
+          left: Array.isArray(options) ? options : [],
+          right: shuffled,
+        };
+      } else {
+        rest.options = options;
+      }
+
       return rest;
     });
   } else {
