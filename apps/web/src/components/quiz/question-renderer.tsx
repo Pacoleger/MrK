@@ -232,7 +232,7 @@ function MatchingQuestion({
   //
   // Deshalb: Wir senden beim Quiz-Detail-Request die "rechten" Werte separat.
   // Für jetzt nutzen wir einen Trick: Die Rechten sind in `question.options` als
- 2 // zweites Array? Nein, zu komplex.
+ // zweites Array? Nein, zu komplex.
   //
   // Einfacher Ansatz: Beim Erstellen wird `options` = [left1, left2, ...] und
   // `correct_answer` = {left1: right1, ...}. Der Schüler muss für jede Linke
