@@ -1,3 +1,6 @@
+import { handleRoom } from "./routes/rooms";
+export { RoomDurableObject } from "./durable/room";
+
 import type { Env } from "./types";
 import { ok, notFound, fail } from "./lib/response";
 import { handlePreflight, withCors } from "./lib/cors";
