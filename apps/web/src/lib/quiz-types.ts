@@ -64,6 +64,8 @@ export interface Quiz {
   attempt_max_score?: number;
   attempt_percentage?: number;
   attempt_id?: string;
+  class_assign_count?: number;
+  student_assign_count?: number;
 }
 
 export interface QuizDetail extends Quiz {
