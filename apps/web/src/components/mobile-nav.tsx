@@ -21,6 +21,7 @@ import {
   FlaskConical,
   Leaf,
   Sigma,
+  Video,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useT } from "@/i18n/use-translation";
