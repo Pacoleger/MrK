@@ -480,7 +480,11 @@ async function route(
   }
 
   if (path === "/api/chat/users") return handleChatUsers(request, env);
-
+  // Rooms (Durable Objects)
+  {
+    const m = matchPath("/api/rooms/:id", path);
+    if (m) return handleRoom(request, env, m.id);
+  }
   // ============================================================
   // 404
   // ============================================================
