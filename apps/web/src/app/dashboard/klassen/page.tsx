@@ -1,10 +1,18 @@
 "use client";
-import { Video } from "lucide-react";
-import Link from "next/link";
+
 import * as React from "react";
-import { GraduationCap, Trophy, Star, Loader2, Users } from "lucide-react";
+import Link from "next/link";
+import {
+  GraduationCap,
+  Trophy,
+  Star,
+  Loader2,
+  Users,
+  Video,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { classesApi, type ClassInfo, type RankingEntry } from "@/lib/stats-api";
 import { cn } from "@/lib/utils";
 
