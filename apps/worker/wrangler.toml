@@ -29,3 +29,13 @@ bucket_name = "mrk-uploads"
 # ============================================================
 [observability]
 enabled = true
+# ============================================================
+# Durable Objects (für Live-Räume)
+# ============================================================
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "RoomDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RoomDurableObject"]
