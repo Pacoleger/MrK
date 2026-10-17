@@ -32,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/aufgaben",      label: "Aufgaben",      icon: BookOpen },
   { href: "/dashboard/quiz",          label: "Quizze",        icon: ListChecks },
   { href: "/dashboard/materialien",   label: "Materialien",   icon: Library },
+  { href: "/dashboard/raum",          label: "Konferenzraum", icon: Video },  // ← neu
   { href: "/dashboard/chat",          label: "Chat",          icon: MessageSquare },
   { href: "/dashboard/klassen",       label: "Klassen",       icon: GraduationCap },
   { href: "/dashboard/erfolge",       label: "Erfolge",       icon: Trophy },
