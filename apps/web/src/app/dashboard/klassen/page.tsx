@@ -1,5 +1,6 @@
 "use client";
-
+import { Video } from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 import { GraduationCap, Trophy, Star, Loader2, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
