@@ -428,11 +428,7 @@ async function route(
     const mHomeroom = matchPath("/api/admin/classes/:id/homeroom", path);
     if (mHomeroom)
       return handleSetHomeroomTeacher(request, env, mHomeroom.id);
-  // Rooms (Durable Objects)
-  {
-    const m = matchPath("/api/rooms/:id", path);
-    if (m) return handleRoom(request, env, m.id);
-  }
+
     // Subject Routes
     const mAddSubject = matchPath(
       "/api/admin/classes/:classId/subjects",
