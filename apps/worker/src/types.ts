@@ -9,7 +9,7 @@ export interface Env {
   // R2 Storage
   STORAGE?: R2Bucket;
 
-  // Durable Objects
+  // Durable Objects (für Live-Räume)
   ROOMS: DurableObjectNamespace;
 
   // Environment Variables
@@ -18,6 +18,7 @@ export interface Env {
   // Secrets
   JWT_SECRET?: string;
 }
+
 // ============================================================
 // API Response Types
 // ============================================================
@@ -60,6 +61,7 @@ export interface DbRole {
   description: string | null;
   created_at: string;
 }
+
 // ============================================================
 // Auth Types
 // ============================================================
@@ -74,6 +76,7 @@ export interface DbUser {
   role: "admin" | "teacher" | "student";
   avatar_url: string | null;
   is_active: number;
+  is_approved: number;
   locale: "de" | "en" | "fr";
   last_login_at: string | null;
   created_at: string;
@@ -92,7 +95,7 @@ export interface PublicUser {
 }
 
 export interface JwtPayload {
-  sub: string;        // user id
+  sub: string;
   email: string;
   role: string;
   iat: number;
@@ -116,6 +119,7 @@ export function toPublicUser(u: DbUser): PublicUser {
     createdAt: u.created_at,
   };
 }
+
 // ============================================================
 // Assignment / Submission Types
 // ============================================================
