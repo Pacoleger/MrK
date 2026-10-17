@@ -1,4 +1,3 @@
-// apps/worker/src/durable/room.ts
 import type { Env } from "../types";
 
 export class RoomDurableObject implements DurableObject {
@@ -54,13 +53,13 @@ export class RoomDurableObject implements DurableObject {
           this.save();
           this.broadcast({ type: "notes_updated", notes: data.notes }, ws);
         } else if (data.type === "draw") {
-          const item = { ...data.item, id: crypto.randomUUID() };
+          const item = { ...data.item, id: Math.random().toString(36).substring(7) };
           this.roomState.whiteboard.push(item);
           this.save();
           this.broadcast({ type: "draw", item }, ws);
         } else if (data.type === "chat_message") {
           const chatMsg = {
-            id: crypto.randomUUID(),
+            id: Math.random().toString(36).substring(7),
             user: name,
             text: data.text,
             time: Date.now(),
