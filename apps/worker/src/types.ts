@@ -15,7 +15,10 @@ export interface Env {
   // Secrets (in Welle 4c gesetzt)
   JWT_SECRET?: string;
 }
-
+export interface Env {
+  // ... dein DB, STORAGE etc.
+  ROOMS: DurableObjectNamespace;
+}
 // ============================================================
 // API Response Types
 // ============================================================
