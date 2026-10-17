@@ -102,7 +102,19 @@ export default function KlassenPage() {
           </button>
         ))}
       </div>
-
+      {selectedClass && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <Link href={`/dashboard/raum?id=${selectedClass}`}>
+            <Button>
+              <Video className="h-4 w-4" />
+              Raum betreten
+            </Button>
+          </Link>
+          <span className="text-xs text-muted-foreground">
+            Jeder Teilnehmer der Klasse kann hier gemeinsam arbeiten
+          </span>
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
