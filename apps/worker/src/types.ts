@@ -6,18 +6,17 @@ export interface Env {
   // D1 Database
   DB: D1Database;
 
-  // R2 Storage (in Welle 4b aktiviert)
+  // R2 Storage
   STORAGE?: R2Bucket;
+
+  // Durable Objects
+  ROOMS: DurableObjectNamespace;
 
   // Environment Variables
   ENVIRONMENT: string;
 
-  // Secrets (in Welle 4c gesetzt)
+  // Secrets
   JWT_SECRET?: string;
-}
-export interface Env {
-  // ... dein DB, STORAGE etc.
-  ROOMS: DurableObjectNamespace;
 }
 // ============================================================
 // API Response Types
