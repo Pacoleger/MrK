@@ -427,7 +427,7 @@ async function route(
 
     const mHomeroom = matchPath("/api/admin/classes/:id/homeroom", path);
     if (mHomeroom)
-      return handleSetHomeroomTeacher(request, env, mHomeroom.id);
+  //    return handleSetHomeroomTeacher(request, env, mHomeroom.id);
 
     // Subject Routes
     const mAddSubject = matchPath(
@@ -484,6 +484,13 @@ async function route(
   {
     const m = matchPath("/api/rooms/:id", path);
     if (m) return handleRoom(request, env, m.id);
+  }
+    // ============================================================
+  // Rooms (WebSocket)
+  // ============================================================
+  if (path.startsWith("/api/rooms/")) {
+    const roomId = path.replace("/api/rooms/", "");
+    if (roomId) return handleRoom(request, env, roomId);
   }
   // ============================================================
   // 404
