@@ -17,6 +17,7 @@ import {
   FlaskConical,
   Leaf,
   Sigma,
+  Video, 
 } from "lucide-react";
 import { ProtectedRoute } from "@/components/protected-route";
 import { UserMenu } from "@/components/user-menu";
