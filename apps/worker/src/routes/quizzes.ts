@@ -79,7 +79,8 @@ async function listQuizzes(
         SELECT q.*, s.name_de AS subject_name, c.name AS class_name,
                u.first_name AS teacher_first, u.last_name AS teacher_last,
                (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.id) AS question_count,
-               (SELECT COUNT(*) FROM quiz_assignments WHERE quiz_id = q.id) AS assignment_count
+               (SELECT COUNT(*) FROM quiz_assignments WHERE quiz_id = q.id AND class_id IS NOT NULL) AS class_assign_count,
+               (SELECT COUNT(*) FROM quiz_assignments WHERE quiz_id = q.id AND student_id IS NOT NULL) AS student_assign_count
         FROM quizzes q
         JOIN subjects s ON s.id = q.subject_id
         JOIN classes c ON c.id = q.class_id
