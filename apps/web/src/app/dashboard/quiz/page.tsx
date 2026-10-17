@@ -10,6 +10,10 @@ import {
   Play,
   CheckCircle2,
   Trophy,
+  ChevronDown,
+  ChevronRight,
+  User as UserIcon,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +25,70 @@ import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { Quiz } from "@/lib/quiz-types";
+
+// ============================================================
+// Klappbarer Bereich
+// ============================================================
+
+function CollapsibleSection({
+  title,
+  count,
+  icon: Icon,
+  children,
+  defaultOpen = false,
+  isSubSection = false,
+}: {
+  title: string;
+  count: number;
+  icon?: React.ElementType;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  isSubSection?: boolean;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+
+  return (
+    <div className={cn(
+      "rounded-2xl border border-border overflow-hidden bg-card/30",
+      isSubSection && "border-0 bg-transparent rounded-none"
+    )}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition text-left",
+          !isSubSection && "bg-muted/20"
+        )}
+      >
+        <span className="shrink-0 text-muted-foreground">
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </span>
+        {Icon && (
+          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center text-white shrink-0">
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+        <span className={cn("font-semibold", isSubSection ? "text-sm" : "text-base")}>
+          {title}
+        </span>
+        <span className="text-xs text-muted-foreground ml-2">({count})</span>
+      </button>
+
+      {open && (
+        <div className={cn(
+          "p-4 pt-2",
+          !isSubSection && "border-t border-border"
+        )}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Hauptseite
+// ============================================================
 
 export default function QuizListPage() {
   const { user } = useAuth();
@@ -56,6 +124,44 @@ export default function QuizListPage() {
       .then((data) => setClasses(data.classes))
       .catch(console.error);
   }, [isTeacher]);
+
+  // ============================================================
+  // Gruppierung: Fach → (Klasse / Einzelne Schüler)
+  // ============================================================
+  const grouped = React.useMemo(() => {
+    if (!isTeacher) return null;
+
+    const bySubject: Record<string, {
+      subjectName: string;
+      byClass: Record<string, { className: string; quizzes: Quiz[] }>;
+      individualQuizzes: Quiz[];
+    }> = {};
+
+    for (const q of quizzes) {
+      if (!bySubject[q.subject_id]) {
+        bySubject[q.subject_id] = {
+          subjectName: q.subject_name ?? q.subject_id,
+          byClass: {},
+          individualQuizzes: [],
+        };
+      }
+
+      // Wenn an einzelne Schüler zugeteilt, gehört es zur Sektion "Einzelne"
+      if ((q.student_assign_count ?? 0) > 0) {
+        bySubject[q.subject_id].individualQuizzes.push(q);
+      } else {
+        // Sonst zur Klasse
+        if (!bySubject[q.subject_id].byClass[q.class_id]) {
+          bySubject[q.subject_id].byClass[q.class_id] = {
+            className: q.class_name ?? "Unbekannt",
+            quizzes: [],
+          };
+        }
+        bySubject[q.subject_id].byClass[q.class_id].quizzes.push(q);
+      }
+    }
+    return Object.values(bySubject);
+  }, [quizzes, isTeacher]);
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -97,7 +203,61 @@ export default function QuizListPage() {
               : "Aktuell sind keine Quizze verfügbar."}
           </p>
         </div>
+      ) : isTeacher && grouped ? (
+        // LEHRER-ANSICHT (gruppiert)
+        <div className="space-y-10">
+          {grouped.map((group) => {
+            const totalCount = 
+              Object.values(group.byClass).reduce((acc, c) => acc + c.quizzes.length, 0) + 
+              group.individualQuizzes.length;
+
+            return (
+              <section key={group.subjectName}>
+                <div className="flex items-center gap-3 mb-4 pb-3 border-b-2 border-border">
+                  <h2 className="text-xl font-bold">{group.subjectName}</h2>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {totalCount} {totalCount === 1 ? "Quiz" : "Quizze"}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Klassen */}
+                  {Object.entries(group.byClass).map(([classId, classData]) => (
+                    <CollapsibleSection
+                      key={classId}
+                      title={classData.className}
+                      count={classData.quizzes.length}
+                      icon={GraduationCap}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {classData.quizzes.map((quiz) => (
+                          <QuizCard key={quiz.id} quiz={quiz} />
+                        ))}
+                      </div>
+                    </CollapsibleSection>
+                  ))}
+
+                  {/* Einzelne Schüler */}
+                  {group.individualQuizzes.length > 0 && (
+                    <CollapsibleSection
+                      title="Einzelne Schüler"
+                      count={group.individualQuizzes.length}
+                      icon={UserIcon}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {group.individualQuizzes.map((quiz) => (
+                          <QuizCard key={quiz.id} quiz={quiz} />
+                        ))}
+                      </div>
+                    </CollapsibleSection>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       ) : (
+        // SCHÜLER-ANSICHT (flach)
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {quizzes.map((quiz) => (
             <QuizCard key={quiz.id} quiz={quiz} />
@@ -118,6 +278,10 @@ export default function QuizListPage() {
     </div>
   );
 }
+
+// ============================================================
+// Quiz Card
+// ============================================================
 
 const subjectColors: Record<string, string> = {
   math: "from-brand-500 to-brand-700",
